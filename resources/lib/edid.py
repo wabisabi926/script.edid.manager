@@ -117,6 +117,22 @@ def is_valid_edid(data):
         return False
 
 
+def parse_pnp_id(data):
+    """Decode the manufacturer (3-letter PnP ID) and product code packed at
+    EDID block 0 offsets 8-11. Returns (manufacturer, product), both None if
+    data is too short to hold them. Never raises.
+    """
+    if len(data) < 12:
+        return None, None
+
+    manu_code = (data[8] << 8) | data[9]
+    manufacturer = ''.join(
+        chr(((manu_code >> shift) & 0x1f) + ord('A') - 1)
+        for shift in (10, 5, 0))
+    product = data[10] | (data[11] << 8)
+    return manufacturer, product
+
+
 def find_vsvdb(data):
     """Walk the CTA-861 extension blocks for a vendor-specific data block
     carrying the Dolby OUI and return its raw bytes, the same shape

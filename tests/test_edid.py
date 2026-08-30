@@ -99,6 +99,24 @@ class TestNormalizeInput:
         assert edid.normalize_input(None) is None
 
 
+class TestParsePnpId:
+    def test_decodes_manufacturer_and_product(self):
+        b = bytearray(_base_block())
+        b[8] = 0x1e  # ACM (5-bit letters clamp within range)
+        b[9] = 0xa5
+        b[10] = 0x34
+        b[11] = 0x12
+        manufacturer, product = edid.parse_pnp_id(bytes(b))
+        assert manufacturer is not None
+        assert product == 0x1234
+
+    def test_too_short_returns_none_none(self):
+        assert edid.parse_pnp_id(bytes(11)) == (None, None)
+
+    def test_never_raises_on_empty(self):
+        assert edid.parse_pnp_id(b'') == (None, None)
+
+
 class TestValidateEdidAccepts:
     def test_single_block_no_extensions(self):
         data = _base_block(ext_count=0)
