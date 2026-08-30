@@ -194,7 +194,9 @@ class TestClassifyEdid:
         result = state.classify_edid(bytes.fromhex(_PROFILE_A['raw']), [_PROFILE_A])
         assert result.state == state.RUNTIME_ONLY
         assert result.profile_id == _PROFILE_A['id']
-        assert result.uncertain is False
+        # a rawedid match cannot prove forcing: the captured sink EDID
+        # matches its own profile with nothing forced at all
+        assert result.uncertain is True
 
     def test_inactive_no_rawedid_no_persisted(self):
         result = state.classify_edid(b'', [_PROFILE_A])

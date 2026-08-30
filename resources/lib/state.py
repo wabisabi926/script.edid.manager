@@ -124,7 +124,9 @@ def classify_edid(rawedid, profiles, persisted=None):
 
     if rawedid_hex is not None:
         if matched is not None:
-            return Classification(RUNTIME_ONLY, matched.get('id'), False)
+            # uncertain: a match proves nothing about forcing (finding 8);
+            # a captured sink EDID matches its own profile with nothing forced
+            return Classification(RUNTIME_ONLY, matched.get('id'), True)
         return Classification(INACTIVE, None, True)
 
     return Classification(INACTIVE, None, False)
