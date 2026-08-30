@@ -42,6 +42,20 @@ class TestClassifyVsvdb:
         assert result.state == state.FOREIGN
         assert result.profile_id is None
 
+    def test_matching_persisted_raw_is_not_foreign_even_when_profile_absent_from_store(self):
+        # device drill: a persisted-but-not-stored profile at boot. params
+        # match the persisted profile's raw exactly, but that profile isn't
+        # in the profiles list (deleted from the store, or never round-
+        # tripped through it). Matching the persisted raw can never be
+        # foreign; the truth here is persisted-pending, since dv_cap hasn't
+        # caught up yet.
+        persisted = _profile('persisted-id', _PROFILE_A['raw'])
+        result = state.classify_vsvdb(
+            255, bytes.fromhex(_PROFILE_A['raw']), _UNKNOWN_HEX,
+            [], persisted=persisted)
+        assert result.state == state.PERSISTED_PENDING
+        assert result.profile_id == 'persisted-id'
+
     def test_custom_bytes_matching_a_stored_profile_is_not_foreign(self):
         result = state.classify_vsvdb(
             255, bytes.fromhex(_PROFILE_A['raw']), _PROFILE_A['raw'], [_PROFILE_A])

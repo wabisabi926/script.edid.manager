@@ -65,8 +65,12 @@ def classify_vsvdb(force_vsvdb, vsvdb_data, dv_cap_hex, profiles, persisted=None
 
     # force_vsvdb 1-4 is a preset by construction (design finding 4), so it
     # is always decidable even with no matching store record; 255 is custom
-    # bytes, and unmatched custom bytes are exactly what foreign means.
-    if force_vsvdb == 255 and _match(profiles, vsvdb_data_hex) is None:
+    # bytes, and unmatched custom bytes are exactly what foreign means. A
+    # match against the persisted profile's own raw counts too, even when
+    # that profile isn't in the profiles list: a persisted-but-not-stored
+    # profile is a persistence state, never someone-used-SSH.
+    matches_persisted_raw = persisted_raw is not None and vsvdb_data_hex == persisted_raw
+    if force_vsvdb == 255 and _match(profiles, vsvdb_data_hex) is None and not matches_persisted_raw:
         return Classification(FOREIGN, None, False)
 
     if override_active and persisted_raw is not None and vsvdb_data_hex == persisted_raw:
