@@ -1,0 +1,11 @@
+[Unit]
+Description=EDID Manager boot profile apply
+Before=kodi.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=-/bin/sh /storage/.kodi/addons/script.edid.manager/resources/bin/edidmgr-boot-apply.sh
+
+[Install]
+WantedBy=kodi.service
