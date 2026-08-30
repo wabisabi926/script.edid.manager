@@ -26,6 +26,7 @@ fi
 PROFILE_FILE="$DIR/active.profile"
 STATE_FILE="$DIR/active.state"
 DISARMED_FILE="$DIR/active.disarmed"
+DEFERRED_FILE="$DIR/active.deferred"
 
 # 255 selects the custom bytes in vsvdb_data. Presets 1-4 would memcpy their
 # own array over vsvdb_data at every parse (design finding 4), so a
@@ -53,9 +54,23 @@ disarm() {
     return 0
 }
 
+hpd_on() {
+    [ "$(cat "$HDMI_DIR/hpd_state" 2>/dev/null)" = "1" ]
+}
+
 apply_edid() {
     [ -n "$1" ] || return 0
     printf 'load %s\n' "$1" > "$HDMI_DIR/edid" 2>/dev/null
+    return 0
+}
+
+# a forced EDID at boot with hpd_state at 0 wedges Kodi: the vendor mode
+# chooser never looks at HPD, so a valid VIC out of the forced block drives
+# real TMDS into a disabled PHY and no flip ever completes. The service loads
+# the same bytes once Kodi is up, where a sysfs EDID write raises no DRM
+# hotplug event and cannot disturb the pipe Kodi already committed.
+defer_edid() {
+    printf 'edid-deferred\n' > "$DEFERRED_FILE" 2>/dev/null
     return 0
 }
 
@@ -76,7 +91,7 @@ apply_vsvdb() {
 # next real hotplug do the parse. DEVICE-CONFIRM in the smoke pass: this is
 # the one step here that is source-reasoned rather than observed.
 reparse_for_params() {
-    [ "$(cat "$HDMI_DIR/hpd_state" 2>/dev/null)" = "1" ] || return 0
+    hpd_on || return 0
     printf 'load %s\n' "$EDID_SENTINEL" > "$HDMI_DIR/edid" 2>/dev/null
     return 0
 }
@@ -87,13 +102,21 @@ apply_profile() {
     edid_raw=$(field edid_raw)
     vsvdb_raw=$(field vsvdb_raw)
 
-    apply_edid "$edid_raw"
+    if [ -n "$edid_raw" ] && ! hpd_on; then
+        defer_edid
+    else
+        apply_edid "$edid_raw"
+    fi
     apply_vsvdb "$vsvdb_raw"
     if [ -z "$edid_raw" ] && [ -n "$vsvdb_raw" ]; then
         reparse_for_params
     fi
     return 0
 }
+
+# the marker describes this boot only, so a service that never ran does not
+# leave a later boot with an EDID layer to re-apply behind its back
+rm -f "$DEFERRED_FILE" 2>/dev/null
 
 [ -f "$STATE_FILE" ] || exit 0
 

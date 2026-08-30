@@ -41,6 +41,7 @@ def test_paths_follow_the_env_override(persist_dir):
     assert persist.profile_path() == str(persist_dir / 'active.profile')
     assert persist.state_path() == str(persist_dir / 'active.state')
     assert persist.disarmed_path() == str(persist_dir / 'active.disarmed')
+    assert persist.deferred_path() == str(persist_dir / 'active.deferred')
 
 
 def test_nothing_armed_reads_clean(persist_dir):
@@ -171,6 +172,28 @@ def test_clear_disarmed(persist_dir):
     persist.clear_disarmed()
 
     assert persist.disarmed() is False
+
+
+def test_the_deferred_marker_reads_and_clears(persist_dir):
+    assert persist.deferred() is False
+
+    (persist_dir / 'active.deferred').write_text('edid-deferred\n')
+
+    assert persist.deferred() is True
+
+    persist.clear_deferred()
+
+    assert persist.deferred() is False
+
+
+def test_unpersist_takes_the_deferred_marker_with_it(persist_dir):
+    persist.persist_profile(_edid_profile())
+    (persist_dir / 'active.deferred').write_text('edid-deferred\n')
+
+    persist.unpersist()
+
+    assert persist.deferred() is False
+    assert os.listdir(str(persist_dir)) == []
 
 
 def test_unpersist_one_layer_leaves_the_other_armed(persist_dir):
@@ -521,6 +544,54 @@ def test_boot_script_never_sentinels_over_its_own_forced_edid(boot_tree):
     _run_boot_script(boot_tree)
 
     assert boot_tree['edid'].read_text() == 'load %s\n' % _EDID_HEX
+
+
+def test_boot_script_defers_the_edid_layer_with_the_chain_off(boot_tree):
+    boot_tree['hpd_state'].write_text('0\n')
+    _arm(boot_tree, persist.STATE_PENDING)
+
+    _run_boot_script(boot_tree)
+
+    applied = _applied(boot_tree)
+    assert applied['edid'] == ''
+    assert applied['vsvdb_data'] == '0xeb,0x01,0x46,0xd0,0x00,0x48,0x02,0x87,0x83,0x5c,0x6d,0x8e'
+    assert applied['force_vsvdb'] == '255'
+    assert (boot_tree['dir'] / 'active.deferred').read_text() == 'edid-deferred\n'
+    assert persist.current_state() == persist.STATE_TRIAL
+    for name in os.listdir(str(boot_tree['dir'])):
+        assert name.startswith('active.')
+
+
+def test_boot_script_defers_an_edid_only_profile_with_the_chain_off(boot_tree):
+    boot_tree['hpd_state'].write_text('0\n')
+    _arm(boot_tree, persist.STATE_CONFIRMED, vsvdb=False)
+
+    _run_boot_script(boot_tree)
+
+    assert _applied(boot_tree) == {'edid': '', 'vsvdb_data': '', 'force_vsvdb': '0'}
+    assert persist.deferred() is True
+    assert persist.current_state() == persist.STATE_CONFIRMED
+
+
+def test_boot_script_defers_nothing_with_the_chain_on(boot_tree):
+    _arm(boot_tree, persist.STATE_CONFIRMED)
+
+    _run_boot_script(boot_tree)
+
+    assert boot_tree['edid'].read_text() == 'load %s\n' % _EDID_HEX
+    assert persist.deferred() is False
+
+
+def test_boot_script_clears_a_deferred_marker_it_did_not_write(boot_tree):
+    # the marker describes one boot: a service that never ran must not leave
+    # the next one applying an EDID layer nobody deferred
+    (boot_tree['dir'] / 'active.deferred').write_text('edid-deferred\n')
+    _arm(boot_tree, persist.STATE_TRIAL)
+
+    _run_boot_script(boot_tree)
+
+    assert persist.deferred() is False
+    assert persist.disarmed() is True
 
 
 def test_boot_script_writes_trial_before_applying(boot_tree):

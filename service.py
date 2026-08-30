@@ -125,6 +125,34 @@ def _disarmed_notice():
     persist.clear_disarmed()
 
 
+def _apply_deferred():
+    """Finish the apply the boot unit left half done. It skips an EDID layer
+    when hpd_state reads 0, where a forced EDID wedges Kodi before it is even
+    up (persist.boot_decision); the same bytes loaded from here raise no DRM
+    hotplug event, so they cannot disturb the pipe Kodi has already committed.
+    EDID first and the params on top, the order the kernel composes them in
+    and the order the unit itself uses.
+
+    A failure clears the marker rather than retrying: the boot trial below is
+    what decides whether a profile that did not land stays armed.
+    """
+    if not persist.deferred():
+        return
+
+    persisted = persist.load_persisted()
+    edid_entry = persisted.get(store.KIND_EDID)
+    if edid_entry:
+        try:
+            runtime.apply_edid(edid_entry['raw'])
+            vsvdb = persisted.get(store.KIND_VSVDB)
+            if vsvdb:
+                runtime.write_vsvdb_params(vsvdb['raw'])
+            _log('applied the EDID layer the boot unit deferred with the chain off')
+        except Exception as error:
+            _log('deferred EDID apply failed: %s' % error, xbmc.LOGERROR)
+    persist.clear_deferred()
+
+
 def _effective(persisted):
     """Whether every persisted layer is what the box is actually showing:
     dv_cap for the VSVDB layer, rawedid for the EDID layer, compared whole so
@@ -221,6 +249,7 @@ def run():
         return
 
     try:
+        _apply_deferred()
         _reconcile()
         _disarmed_notice()
         _boot_trial(monitor)

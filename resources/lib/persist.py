@@ -55,6 +55,10 @@ def disarmed_path():
     return os.path.join(persist_dir(), 'active.disarmed')
 
 
+def deferred_path():
+    return os.path.join(persist_dir(), 'active.deferred')
+
+
 def _remove(path):
     try:
         os.remove(path)
@@ -166,6 +170,7 @@ def unpersist(kind=None):
     _remove(profile_path())
     _remove(state_path())
     _remove(disarmed_path())
+    _remove(deferred_path())
     return {}
 
 
@@ -208,6 +213,14 @@ def boot_decision(state):
     the service's trial check times out. At hpd_state 0 it writes no
     sentinel: the re-parse would take the invalid-EDID early return, and the
     next real hotplug parses the params anyway.
+
+    An EDID layer is written at hpd_state 1 only. At 0 the mirror skips the
+    load and leaves `active.deferred` behind instead, because a forced EDID
+    at boot with HPD low wedges Kodi: the vendor mode chooser never looks at
+    HPD, so a valid VIC out of the block drives real TMDS into a disabled PHY
+    and no flip completes. The service applies that layer once Kodi is up,
+    where the same write raises no DRM hotplug event. The params still go in
+    either way, and none of the four states or transitions change with it.
     """
     if state == STATE_CONFIRMED:
         return BootAction(True, STATE_CONFIRMED, False)
@@ -251,6 +264,18 @@ def disarmed():
 
 def clear_disarmed():
     _remove(disarmed_path())
+
+
+def deferred():
+    """Whether this boot's unit skipped the EDID layer. Only the unit writes
+    the marker and only the service clears it, right after applying that layer
+    at runtime.
+    """
+    return os.path.exists(deferred_path())
+
+
+def clear_deferred():
+    _remove(deferred_path())
 
 
 def rearm():

@@ -389,6 +389,121 @@ class TestBootTrial:
         assert kodi.calls == []
 
 
+class TestDeferredEdidApply:
+    """The boot unit skips an EDID layer with hpd_state at 0, where a forced
+    EDID wedges Kodi before it is up. The service finishes the apply once the
+    GUI exists, and everything downstream has to see the applied state.
+    """
+
+    @pytest.fixture
+    def deferred(self, kodi, sysfs):
+        profile = store.add_profile(
+            store.KIND_EDID, 'forced', _EDID_HEX, store.SOURCE_CAPTURED)
+        persist.persist_profile(profile)
+        persist.set_state(persist.STATE_TRIAL)
+        with open(persist.deferred_path(), 'w', encoding='utf-8') as handle:
+            handle.write('edid-deferred\n')
+        return profile
+
+    def test_the_layer_lands_and_the_marker_clears(self, kodi, sysfs, deferred):
+        sysfs['hpd_state'] = 0
+
+        service._apply_deferred()
+
+        assert sysfs['writes'] == [('edid', _EDID_HEX)]
+        assert persist.deferred() is False
+
+    def test_a_vsvdb_layer_goes_on_top_in_the_kernel_order(self, kodi, sysfs, deferred):
+        sysfs['hpd_state'] = 0
+        persist.persist_profile(
+            {'id': 'v1', 'kind': store.KIND_VSVDB, 'raw': _VSVDB_HEX})
+
+        service._apply_deferred()
+
+        assert sysfs['writes'] == [
+            ('edid', _EDID_HEX),
+            ('vsvdb_data', _VSVDB_HEX),
+            ('force_vsvdb', 255),
+        ]
+        assert persist.deferred() is False
+
+    def test_nothing_is_applied_without_the_marker(self, kodi, sysfs, deferred):
+        persist.clear_deferred()
+
+        service._apply_deferred()
+
+        assert sysfs['writes'] == []
+
+    def test_a_marker_with_no_edid_layer_just_clears(self, kodi, sysfs, deferred):
+        persist.unpersist(store.KIND_EDID)
+        with open(persist.deferred_path(), 'w', encoding='utf-8') as handle:
+            handle.write('edid-deferred\n')
+
+        service._apply_deferred()
+
+        assert sysfs['writes'] == []
+        assert persist.deferred() is False
+
+    def test_a_failed_apply_clears_the_marker_rather_than_retrying(self, kodi, sysfs, deferred,
+                                                                   monkeypatch):
+        def refuse(data):
+            raise OSError('device or resource busy')
+
+        monkeypatch.setattr(backend, 'write_edid', refuse)
+
+        service._apply_deferred()
+
+        assert persist.deferred() is False
+        assert persist.current_state() == persist.STATE_TRIAL
+        assert persist.load_persisted() != {}
+
+    def test_the_trial_judges_the_state_the_service_just_applied(self, kodi, sysfs, deferred,
+                                                                 unit, monkeypatch):
+        # rawedid only reads back the forced block once the load has landed, so
+        # a trial that ran before the deferred apply would time out on a
+        # profile that is about to be perfectly effective
+        def write_edid(data):
+            sysfs['writes'].append(('edid', data.hex()))
+            sysfs['rawedid'] = data
+
+        monkeypatch.setattr(backend, 'write_edid', write_edid)
+        kodi.yesnocustom_answers = [1]
+
+        service.run()
+
+        assert sysfs['writes'] == [('edid', _EDID_HEX)]
+        assert persist.deferred() is False
+        assert persist.current_state() == persist.STATE_CONFIRMED
+
+
+class TestEffectiveLayers:
+    """What _wait_effective polls: a combined profile counts as effective only
+    when both layers read back, never on the strength of one.
+    """
+
+    @pytest.fixture
+    def combined(self, kodi, sysfs):
+        persist.persist_profile({'id': 'e1', 'kind': store.KIND_EDID, 'raw': _EDID_HEX})
+        persist.persist_profile({'id': 'v1', 'kind': store.KIND_VSVDB, 'raw': _VSVDB_HEX})
+        return persist.load_persisted()
+
+    def test_the_edid_layer_alone_is_not_enough(self, kodi, sysfs, combined):
+        sysfs['rawedid'] = _EDID_WITH_VSVDB
+
+        assert service._effective(combined) is False
+
+    def test_the_vsvdb_layer_alone_is_not_enough(self, kodi, sysfs, combined):
+        sysfs['dv_cap'] = _VSVDB_HEX
+
+        assert service._effective(combined) is False
+
+    def test_both_layers_reading_back_is(self, kodi, sysfs, combined):
+        sysfs['rawedid'] = _EDID_WITH_VSVDB
+        sysfs['dv_cap'] = _VSVDB_HEX
+
+        assert service._effective(combined) is True
+
+
 class TestChainOffPersist:
     """B3, design section 5: the params go in even with the chain off, minus
     the re-parse that would flatten dv_cap. That is what makes
