@@ -15,3 +15,419 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Language: en_gb\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgctxt "#32000"
+msgid "EDID Manager"
+msgstr ""
+
+msgctxt "#32001"
+msgid "General"
+msgstr ""
+
+msgctxt "#32002"
+msgid "Safe-mode countdown, seconds"
+msgstr ""
+
+msgctxt "#32003"
+msgid "Default apply mode"
+msgstr ""
+
+msgctxt "#32004"
+msgid "Runtime only"
+msgstr ""
+
+msgctxt "#32005"
+msgid "Persist across reboots"
+msgstr ""
+
+msgctxt "#32006"
+msgid "Warn when capturing through an AVR"
+msgstr ""
+
+msgctxt "#32007"
+msgid "Enable debug logging"
+msgstr ""
+
+msgctxt "#32020"
+msgid "Capture VSVDB from sink"
+msgstr ""
+
+msgctxt "#32021"
+msgid "Capture EDID from display"
+msgstr ""
+
+msgctxt "#32022"
+msgid "Add preset"
+msgstr ""
+
+msgctxt "#32023"
+msgid "Paste hex"
+msgstr ""
+
+msgctxt "#32024"
+msgid "Import from file"
+msgstr ""
+
+msgctxt "#32025"
+msgid "Revert to display's real EDID"
+msgstr ""
+
+msgctxt "#32026"
+msgid "No profiles yet"
+msgstr ""
+
+msgctxt "#32027"
+msgid "Live state"
+msgstr ""
+
+msgctxt "#32028"
+msgid "VSVDB"
+msgstr ""
+
+msgctxt "#32029"
+msgid "EDID"
+msgstr ""
+
+msgctxt "#32030"
+msgid "no profile active"
+msgstr ""
+
+msgctxt "#32031"
+msgid "no EDID profile active (a forced EDID set outside this addon cannot be detected)"
+msgstr ""
+
+msgctxt "#32032"
+msgid "active until reboot"
+msgstr ""
+
+msgctxt "#32033"
+msgid "persisted and effective"
+msgstr ""
+
+msgctxt "#32034"
+msgid "persisted, takes effect at the next display parse"
+msgstr ""
+
+msgctxt "#32035"
+msgid "drifted from what this addon set"
+msgstr ""
+
+msgctxt "#32036"
+msgid "set outside this addon"
+msgstr ""
+
+msgctxt "#32040"
+msgid "Apply now, until reboot"
+msgstr ""
+
+msgctxt "#32041"
+msgid "Persist across reboots"
+msgstr ""
+
+msgctxt "#32042"
+msgid "Stop persisting"
+msgstr ""
+
+msgctxt "#32043"
+msgid "Revert this profile"
+msgstr ""
+
+msgctxt "#32044"
+msgid "Edit fields"
+msgstr ""
+
+msgctxt "#32045"
+msgid "Derive a copy"
+msgstr ""
+
+msgctxt "#32046"
+msgid "Rename"
+msgstr ""
+
+msgctxt "#32047"
+msgid "Delete"
+msgstr ""
+
+msgctxt "#32048"
+msgid "Details"
+msgstr ""
+
+msgctxt "#32049"
+msgid "Delete the profile \"%s\"?"
+msgstr ""
+
+msgctxt "#32050"
+msgid "Profile name"
+msgstr ""
+
+msgctxt "#32051"
+msgid "Name for the derived profile"
+msgstr ""
+
+msgctxt "#32052"
+msgid "Choose a field"
+msgstr ""
+
+msgctxt "#32054"
+msgid "New value"
+msgstr ""
+
+msgctxt "#32055"
+msgid "Choose the primaries"
+msgstr ""
+
+msgctxt "#32056"
+msgid "As captured"
+msgstr ""
+
+msgctxt "#32057"
+msgid "Save this edit?"
+msgstr ""
+
+msgctxt "#32058"
+msgid "Choose a preset"
+msgstr ""
+
+msgctxt "#32059"
+msgid "Preset %d"
+msgstr ""
+
+msgctxt "#32060"
+msgid "Keep this profile?"
+msgstr ""
+
+msgctxt "#32061"
+msgid "Reverting in %d seconds unless you keep it."
+msgstr ""
+
+msgctxt "#32062"
+msgid "Keep"
+msgstr ""
+
+msgctxt "#32063"
+msgid "Revert"
+msgstr ""
+
+msgctxt "#32064"
+msgid "Reverted."
+msgstr ""
+
+msgctxt "#32065"
+msgid "Applied until the next reboot."
+msgstr ""
+
+msgctxt "#32066"
+msgid "Apply this EDID profile?"
+msgstr ""
+
+msgctxt "#32067"
+msgid "Persist this EDID profile?"
+msgstr ""
+
+msgctxt "#32068"
+msgid "\"%s\" replaces what the box believes its display is, until you revert it or reboot."
+msgstr ""
+
+msgctxt "#32069"
+msgid "Recovery over SSH: rm /storage/.config/edid-manager/active.* disables it at the next boot, and echo \"load 0000000000000000\" > /sys/class/amhdmitx/amhdmitx0/edid drops it now."
+msgstr ""
+
+msgctxt "#32070"
+msgid "The display is off, so applying a VSVDB now would clear the display capabilities instead of setting them. Turn the display on, or persist the profile instead."
+msgstr ""
+
+msgctxt "#32071"
+msgid "Power-cycle the display or AVR for a clean hotplug."
+msgstr ""
+
+msgctxt "#32072"
+msgid "The display is off; the profile takes effect when it comes back."
+msgstr ""
+
+msgctxt "#32073"
+msgid "Persisted. It applies again at every boot until you confirm or revert it."
+msgstr ""
+
+msgctxt "#32074"
+msgid "No longer persisted."
+msgstr ""
+
+msgctxt "#32075"
+msgid "Reverted, and no longer persisted."
+msgstr ""
+
+msgctxt "#32080"
+msgid "Use as a full EDID profile."
+msgstr ""
+
+msgctxt "#32081"
+msgid "Extract just the VSVDB."
+msgstr ""
+
+msgctxt "#32082"
+msgid "Full EDID profile from %s; applying this replaces what the box believes its display is."
+msgstr ""
+
+msgctxt "#32083"
+msgid "VSVDB extracted from %s; the rest of the EDID is not used."
+msgstr ""
+
+msgctxt "#32084"
+msgid "What is this EDID for?"
+msgstr ""
+
+msgctxt "#32085"
+msgid "Choose a file"
+msgstr ""
+
+msgctxt "#32086"
+msgid "Not a VSVDB block and not a valid EDID: %s"
+msgstr ""
+
+msgctxt "#32087"
+msgid "This EDID carries no Dolby VSVDB."
+msgstr ""
+
+msgctxt "#32100"
+msgid "Persisted profile disarmed"
+msgstr ""
+
+msgctxt "#32101"
+msgid "The persisted profile was applied at the previous boot and never confirmed, so it has been disarmed. Arm it again?"
+msgstr ""
+
+msgctxt "#32102"
+msgid "Armed again for the next boot."
+msgstr ""
+
+msgctxt "#32103"
+msgid "modprobe.d leftover"
+msgstr ""
+
+msgctxt "#32104"
+msgid "%s does nothing on CoreELEC 22: aml_media is built into the kernel. EDID Manager can delete it."
+msgstr ""
+
+msgctxt "#32105"
+msgid "Keep this profile at every boot?"
+msgstr ""
+
+msgctxt "#32106"
+msgid "Keeping it stops the question. Doing nothing within %d seconds asks again at the next boot."
+msgstr ""
+
+msgctxt "#32107"
+msgid "Confirmed. It applies at every boot without asking."
+msgstr ""
+
+msgctxt "#32110"
+msgid "Nothing to capture: the display reports no VSVDB."
+msgstr ""
+
+msgctxt "#32111"
+msgid "Nothing to capture: rawedid is empty, so no EDID has been read."
+msgstr ""
+
+msgctxt "#32112"
+msgid "An override is active, so this captures the override rather than the sink."
+msgstr ""
+
+msgctxt "#32113"
+msgid "Revert first, then capture the sink"
+msgstr ""
+
+msgctxt "#32114"
+msgid "Store a copy of the active override"
+msgstr ""
+
+msgctxt "#32115"
+msgid "Not a usable VSVDB: %s"
+msgstr ""
+
+msgctxt "#32116"
+msgid "Not a usable EDID: %s"
+msgstr ""
+
+msgctxt "#32117"
+msgid "Paste a VSVDB block or a whole EDID as hex"
+msgstr ""
+
+msgctxt "#32118"
+msgid "The kernel interface is not available: %s"
+msgstr ""
+
+msgctxt "#32119"
+msgid "%s was not created by this addon, so it is left alone. Remove it by hand to enable boot persistence."
+msgstr ""
+
+msgctxt "#32120"
+msgid "Boot persistence could not be enabled: %s"
+msgstr ""
+
+msgctxt "#32121"
+msgid "HDR10+ advertisement (not Dolby Vision)"
+msgstr ""
+
+msgctxt "#32122"
+msgid "Applying this adds HDR10+ advertisement and leaves the sink's Dolby Vision state untouched."
+msgstr ""
+
+msgctxt "#32123"
+msgid "Captured from the connected sink"
+msgstr ""
+
+msgctxt "#32124"
+msgid "The block comes from whatever terminates the HDMI chain, which may be an AVR rather than the display."
+msgstr ""
+
+msgctxt "#32125"
+msgid "Requested %s, applied %s"
+msgstr ""
+
+msgctxt "#32126"
+msgid "No decoded fields."
+msgstr ""
+
+msgctxt "#32127"
+msgid "Profile details"
+msgstr ""
+
+msgctxt "#32128"
+msgid "Reverted to the display's real EDID."
+msgstr ""
+
+msgctxt "#32129"
+msgid "Yes"
+msgstr ""
+
+msgctxt "#32130"
+msgid "No"
+msgstr ""
+
+msgctxt "#32131"
+msgid "Decide later"
+msgstr ""
+
+msgctxt "#32132"
+msgid "There is no longer a profile to arm."
+msgstr ""
+
+msgctxt "#32140"
+msgid "Delete inert modprobe.d files"
+msgstr ""
+
+msgctxt "#32141"
+msgid "%s contains nothing but these aml_media options, which do nothing on CoreELEC 22:\n\n%s\nDelete the file?"
+msgstr ""
+
+msgctxt "#32142"
+msgid "%s sets more than aml_media options, so this addon leaves it alone. Edit or delete it yourself."
+msgstr ""
+
+msgctxt "#32143"
+msgid "Deleted %s."
+msgstr ""
+
+msgctxt "#32144"
+msgid "%s could not be deleted: %s"
+msgstr ""
