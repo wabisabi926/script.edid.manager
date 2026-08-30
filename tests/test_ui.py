@@ -29,8 +29,9 @@ class _Addon(object):
         return _STRINGS.get(string_id, '')
 
 
-# ui.py imports xbmcgui and xbmcaddon at module level; only the formatting
-# helpers are exercised here, so a bare Addon stub is all they need
+# ui.py imports xbmc, xbmcgui and xbmcaddon at module level; only the
+# formatting helpers are exercised here, so a bare Addon stub is all they need
+sys.modules.setdefault('xbmc', types.ModuleType('xbmc'))
 sys.modules.setdefault('xbmcgui', types.ModuleType('xbmcgui'))
 _xbmcaddon = types.ModuleType('xbmcaddon')
 _xbmcaddon.Addon = _Addon

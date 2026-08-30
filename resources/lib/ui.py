@@ -7,6 +7,9 @@
 # (the countdown, the import intent question, the EDID second confirmation)
 # and 4 (requested versus achieved).
 
+import threading
+
+import xbmc
 import xbmcaddon
 import xbmcgui
 
@@ -125,6 +128,10 @@ S_MODPROBE_DELETE_FAILED = 32144
 
 _ADDON = None
 
+_MIN_COUNTDOWN = 0.05
+_COUNTDOWN_JOIN = 1.0
+_CLOSE_YESNO = 'Dialog.Close(yesnodialog)'
+
 
 def _addon():
     global _ADDON
@@ -187,6 +194,13 @@ def browse_file(heading):
     return path or None
 
 
+def _countdown_timer(seconds, expired, answered):
+    if answered.wait(seconds):
+        return
+    expired.set()
+    xbmc.executebuiltin(_CLOSE_YESNO)
+
+
 def countdown_confirm(heading, message, seconds):
     """The confirm-or-revert dialog from design section 3. Returns 'yes',
     'no' or 'timeout', which are three different outcomes at the boot-trial
@@ -194,18 +208,37 @@ def countdown_confirm(heading, message, seconds):
 
     yesnocustom rather than yesno because it reports a cancel separately:
     1 yes, 0 no, 2 the custom "decide later" button, -1 cancel or ESC. Only
-    the explicit No button is destructive; a cancel and an autoclose both
-    read as a timeout, and so does any value a future Kodi adds.
+    the explicit No button is destructive; a cancel reads as a timeout, and so
+    does any value a future Kodi adds.
+
+    The countdown is the thread above rather than yesnocustom's autoclose,
+    because an autoclose returns 0, the same value the No button returns, and
+    so does an external Dialog.Close (both device-verified on the AM9 Pro). No
+    return value distinguishes them, so the timer records that it fired before
+    it closes the dialog and a 0 is read against that flag.
+
+    A No pressed in the same instant the timer fires therefore reads as a
+    timeout. That is the chosen direction: a misread timeout asks again, a
+    misread No would revert a profile the user had just kept.
     """
-    seconds = max(1, int(seconds))
-    answer = xbmcgui.Dialog().yesnocustom(
-        heading, message,
-        customlabel=L(S_COUNTDOWN_LATER),
-        nolabel=L(S_COUNTDOWN_REVERT), yeslabel=L(S_COUNTDOWN_KEEP),
-        autoclose=seconds * 1000)
+    seconds = max(_MIN_COUNTDOWN, float(seconds))
+    expired = threading.Event()
+    answered = threading.Event()
+    timer = threading.Thread(target=_countdown_timer, args=(seconds, expired, answered))
+    timer.daemon = True
+    timer.start()
+    try:
+        answer = xbmcgui.Dialog().yesnocustom(
+            heading, message,
+            customlabel=L(S_COUNTDOWN_LATER),
+            nolabel=L(S_COUNTDOWN_REVERT), yeslabel=L(S_COUNTDOWN_KEEP))
+    finally:
+        answered.set()
+        timer.join(_COUNTDOWN_JOIN)
+
     if answer == 1:
         return 'yes'
-    if answer == 0:
+    if answer == 0 and not expired.is_set():
         return 'no'
     return 'timeout'
 
