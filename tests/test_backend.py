@@ -19,7 +19,7 @@ def tree(tmp_path, monkeypatch):
     force_vsvdb.write_text('0\n')
     vsvdb_data.write_text('')
     hpd_state.write_text('1\n')
-    rawedid.write_bytes(b'')
+    rawedid.write_text('')
     edid.write_text('')
 
     monkeypatch.setenv('EDIDMGR_FORCE_VSVDB_PATH', str(force_vsvdb))
@@ -87,10 +87,29 @@ def test_hpd_read(tree):
     assert backend.read_hpd_state() == 0
 
 
-def test_rawedid_read_binary(tree):
+def test_rawedid_read_decodes_device_hex_text(tree):
     blob = bytes([0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00]) + bytes(120)
-    tree['rawedid'].write_bytes(blob)
+    tree['rawedid'].write_text(blob.hex() + '\n')
     assert backend.read_rawedid() == blob
+
+
+def test_rawedid_read_empty_node_is_empty_bytes(tree):
+    tree['rawedid'].write_text('')
+    assert backend.read_rawedid() == b''
+
+
+def test_rawedid_read_garbage_node_is_empty_bytes(tree, monkeypatch):
+    logged = []
+    fake_xbmc = type(sys)('xbmc')
+    fake_xbmc.LOGERROR = 3
+    fake_xbmc.log = lambda message, level: logged.append((message, level))
+    monkeypatch.setitem(sys.modules, 'xbmc', fake_xbmc)
+
+    tree['rawedid'].write_text('not hex at all\n')
+
+    assert backend.read_rawedid() == b''
+    assert len(logged) == 1
+    assert logged[0][1] == fake_xbmc.LOGERROR
 
 
 def _checksum(block):

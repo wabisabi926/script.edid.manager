@@ -11,7 +11,9 @@
 #   capped at 32 bytes, the largest legal VSVDB.
 #   hpd_state and rawedid live under /sys/class/amhdmitx/amhdmitx0/, along
 #   with edid, which takes "load <hex>" to force a whole EDID with no DDC
-#   read at all and no validation of its own. The kernel accepts hex
+#   read at all and no validation of its own. rawedid itself reads back as
+#   ascii hex text, newline-terminated, empty when nothing is latched, not
+#   the raw binary the node's name suggests. The kernel accepts hex
 #   strings of length 256*i+1 (i in 1..8, counting the trailing newline),
 #   i.e. 128 to 1024 raw bytes. "load 0000000000000000" is the sentinel
 #   that reverts to a DDC read; the check is a prefix compare, so any real
@@ -80,9 +82,28 @@ def read_hpd_state():
 
 
 def read_rawedid():
+    """rawedid reads back as ascii hex text, newline-terminated, empty when
+    no EDID is latched. Malformed hex logs and reads as b'', the same as an
+    empty node, so a caller comparing against stored profile hex just sees
+    no match rather than an exception.
+    """
     path = _path('EDIDMGR_RAWEDID_PATH', _RAWEDID_PATH)
-    with open(path, 'rb') as f:
-        return f.read()
+    text = _read_text(path).strip()
+    if not text:
+        return b''
+    try:
+        return bytes.fromhex(text)
+    except ValueError:
+        _log_rawedid_malformed(text)
+        return b''
+
+
+def _log_rawedid_malformed(text):
+    try:
+        import xbmc
+    except ImportError:
+        return
+    xbmc.log('script.edid.manager: rawedid node held non-hex text: %r' % text, xbmc.LOGERROR)
 
 
 def _log_sidedata_missing():
