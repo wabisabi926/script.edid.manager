@@ -85,10 +85,22 @@ def read_rawedid():
         return f.read()
 
 
+def _log_sidedata_missing():
+    # script.module.sidedata is a hard requires in addon.xml, so an import
+    # failure is a broken install rather than an optional feature being off
+    try:
+        import xbmc
+    except ImportError:
+        return
+    xbmc.log('script.edid.manager: script.module.sidedata is not importable,'
+             ' the effective VSVDB cannot be read', xbmc.LOGERROR)
+
+
 def read_effective_vsvdb_hex():
     try:
         import sidedata
     except ImportError:
+        _log_sidedata_missing()
         return None
     return sidedata.read_vsvdb_raw()
 
