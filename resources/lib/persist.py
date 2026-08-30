@@ -35,6 +35,8 @@ UNIT_NAME = 'script.edid.manager.service'
 _DISARMED_TEXT = ('the previous boot applied this profile and never showed the'
                   ' confirmation dialog\n')
 
+_DEFERRED_TEXT = 'edid-deferred\n'
+
 # apply, the state the unit leaves behind, and whether this boot disarms.
 BootAction = collections.namedtuple('BootAction', ['apply', 'next_state', 'disarm'])
 
@@ -267,11 +269,16 @@ def clear_disarmed():
 
 
 def deferred():
-    """Whether this boot's unit skipped the EDID layer. Only the unit writes
-    the marker and only the service clears it, right after applying that layer
-    at runtime.
+    """Whether the EDID layer of a persisted apply is still owed. The unit
+    writes the marker when it skips that layer at boot, the service writes it
+    when it pulls the layer back out before a restart, and only the service
+    clears it, right after applying the layer at runtime.
     """
     return os.path.exists(deferred_path())
+
+
+def defer_edid():
+    _write_atomic(deferred_path(), _DEFERRED_TEXT)
 
 
 def clear_deferred():

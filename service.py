@@ -4,7 +4,9 @@
 # is already the thing running at that moment and there is no boot state to
 # reconcile.
 #
-# Everything below runs once at Kodi start and the service then exits;
+# The reconciliation below runs once at Kodi start; the service then stays
+# alive on the monitor so it can pull a forced EDID back out of the kernel
+# before Kodi restarts into display init with it (_revert_for_restart).
 # monitor.waitForAbort is used for every wait so a shutdown during the trial
 # dialog's polling does not hold Kodi up.
 
@@ -32,6 +34,8 @@ _STARTUP_DELAY = 5.0
 # applied with the chain off only reaches dv_cap at the hotplug parse
 _TRIAL_POLL = 2.0
 _TRIAL_WAIT = 120.0
+
+_ABORT_POLL = 5.0
 
 
 def _log(message, level=xbmc.LOGINFO):
@@ -243,19 +247,69 @@ def _boot_trial(monitor):
     _log('boot trial dialog timed out, staying %s' % persist.STATE_TRIAL_ACKED)
 
 
-def run():
-    monitor = xbmc.Monitor()
-    if monitor.waitForAbort(_STARTUP_DELAY):
+def _matches_a_stored_profile(rawedid_hex):
+    return any(profile.get('raw') == rawedid_hex for profile in store.list_profiles()
+               if profile.get('kind') == store.KIND_EDID)
+
+
+def _revert_for_restart():
+    """Kodi is going down. A restart with the chain off walks it through
+    display init again with whatever EDID is forced in the kernel, which is
+    the wedge finding 11 describes, and the boot unit's deferral only covers
+    real boots. So the forced EDID goes out before Kodi stops, and a persisted
+    layer leaves behind the same active.deferred marker the unit would have
+    written, for the next start to apply once the GUI is up.
+
+    Only evidence acts. The persisted case is a persisted layer whose bytes
+    rawedid reads back; an unpersisted stored profile in rawedid is reverted
+    without a marker, since nothing armed it for the next start either way. An
+    EDID forced by someone else cannot be recognized at all (finding 8) and is
+    left alone rather than reverted on a guess.
+    """
+    if runtime.hpd_state() != 0:
         return
 
     try:
-        _apply_deferred()
-        _reconcile()
-        _disarmed_notice()
-        _boot_trial(monitor)
-        _warn_modprobe_leftovers()
+        rawedid_hex = backend.read_rawedid().hex()
+    except (OSError, ValueError) as error:
+        _log('rawedid read before shutdown failed: %s' % error, xbmc.LOGWARNING)
+        return
+    if not rawedid_hex:
+        return
+
+    persisted = persist.load_persisted().get(store.KIND_EDID)
+    if persisted and persisted['raw'] == rawedid_hex:
+        runtime.revert_edid()
+        persist.defer_edid()
+        _log('reverted the persisted EDID layer for a restart with the chain off,'
+             ' deferred to the next start')
+        return
+
+    if _matches_a_stored_profile(rawedid_hex):
+        runtime.revert_edid()
+        _log('reverted a runtime-only EDID for a restart with the chain off')
+
+
+def run():
+    monitor = xbmc.Monitor()
+    if not monitor.waitForAbort(_STARTUP_DELAY):
+        try:
+            _apply_deferred()
+            _reconcile()
+            _disarmed_notice()
+            _boot_trial(monitor)
+            _warn_modprobe_leftovers()
+        except Exception as error:
+            _log('startup failed: %s' % error, xbmc.LOGERROR)
+
+        while not monitor.abortRequested():
+            if monitor.waitForAbort(_ABORT_POLL):
+                break
+
+    try:
+        _revert_for_restart()
     except Exception as error:
-        _log('startup failed: %s' % error, xbmc.LOGERROR)
+        _log('revert before shutdown failed: %s' % error, xbmc.LOGERROR)
 
 
 if __name__ == '__main__':

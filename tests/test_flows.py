@@ -7,6 +7,7 @@ sysfs as a result. The byte work has its own tests.
 import os
 import re
 import sys
+import threading
 import types
 import xml.etree.ElementTree
 
@@ -36,6 +37,11 @@ _SETTINGS = {
 }
 
 
+# only a hung countdown thread ever reaches it, and then the assertion is the
+# point; no test waits anywhere near this long
+_CLOSE_TIMEOUT = 5.0
+
+
 class _Dialog(object):
     """Every xbmcgui dialog the addon opens, recorded and scripted. Answers
     are queues so a flow that asks twice is told apart from one that asks
@@ -52,6 +58,9 @@ class _Dialog(object):
         self.yesnocustom_answers = []
         self.input_answers = []
         self.on_yesnocustom = None
+        self.builtins = []
+        self.closed = threading.Event()
+        self.wait_for_close = False
 
     def _answer(self, queue, fallback):
         return queue.pop(0) if queue else fallback
@@ -72,7 +81,16 @@ class _Dialog(object):
         self.calls.append(('yesnocustom', message, customlabel, nolabel, yeslabel, autoclose))
         if self.on_yesnocustom is not None:
             self.on_yesnocustom()
+        # the real dialog only returns once something closes it, which is what
+        # makes the countdown's Dialog.Close ordering deterministic here
+        if self.wait_for_close:
+            assert self.closed.wait(_CLOSE_TIMEOUT), 'the countdown never closed the dialog'
         return self._answer(self.yesnocustom_answers, -1)
+
+    def executebuiltin(self, command):
+        self.builtins.append(command)
+        if command == 'Dialog.Close(yesnodialog)':
+            self.closed.set()
 
     def select(self, heading, labels, preselect=-1):
         self.calls.append(('select', tuple(labels)))
@@ -111,6 +129,9 @@ class _Monitor(object):
     def waitForAbort(self, seconds):
         return False
 
+    def abortRequested(self):
+        return True
+
 
 def _stub_module(name, **attributes):
     """Attributes onto whatever module object already answers to this name,
@@ -128,7 +149,8 @@ def _stub_module(name, **attributes):
 
 def _install_stubs():
     _stub_module('xbmc', LOGDEBUG=0, LOGINFO=1, LOGWARNING=2, LOGERROR=3,
-                 log=lambda message, level=1: None, Monitor=_Monitor)
+                 log=lambda message, level=1: None, Monitor=_Monitor,
+                 executebuiltin=lambda command: DIALOG.executebuiltin(command))
     _stub_module('xbmcgui', Dialog=lambda: DIALOG)
     _stub_module('xbmcaddon', Addon=_Addon)
     _stub_module('xbmcvfs', translatePath=lambda path: path)
@@ -292,7 +314,9 @@ class TestForcedEdidEvidence:
 
 class TestCountdownMapping:
     """R1. yesnocustom reports a cancel separately from a No, so only the No
-    button is destructive.
+    button is destructive. The countdown itself is the addon's own timer:
+    Kodi's autoclose returns 0, exactly what the No button returns, so the
+    timer's own flag is what tells a run-out dialog from a decline.
     """
 
     @pytest.mark.parametrize('answer,expected', [
@@ -302,12 +326,41 @@ class TestCountdownMapping:
         (-1, 'timeout'),
         (99, 'timeout'),
     ])
-    def test_answer_mapping(self, kodi, answer, expected):
+    def test_answer_mapping_while_the_timer_still_has_time(self, kodi, answer, expected):
         kodi.yesnocustom_answers = [answer]
 
-        assert ui.countdown_confirm('heading', 'message', 30) == expected
+        assert ui.countdown_confirm('heading', 'message', 300) == expected
+        assert kodi.builtins == []
 
-    def test_the_dialog_carries_the_three_labels_and_the_autoclose(self, kodi):
+    def test_the_timer_closes_the_dialog_and_that_reads_as_a_timeout(self, kodi):
+        kodi.wait_for_close = True
+        # an externally closed yesnocustom returns 0, device-verified
+        kodi.yesnocustom_answers = [0]
+
+        assert ui.countdown_confirm('heading', 'message', 0.01) == 'timeout'
+        assert kodi.builtins == ['Dialog.Close(yesnodialog)']
+
+    def test_a_no_landing_as_the_timer_fires_reads_as_a_timeout(self, kodi):
+        # the race the mapping cannot resolve: a No press and the timer's own
+        # close both return 0 with the flag already set. Asking again next
+        # boot is the direction chosen over reverting a profile just kept
+        kodi.wait_for_close = True
+        kodi.on_yesnocustom = lambda: kodi.yesnocustom_answers.append(0)
+
+        assert ui.countdown_confirm('heading', 'message', 0.01) == 'timeout'
+
+    def test_an_answered_dialog_leaves_no_timer_behind(self, kodi):
+        # a surviving thread would close whatever yesnodialog is open when its
+        # wait ends, which is any later dialog the addon shows
+        threads = threading.active_count()
+        kodi.yesnocustom_answers = [1]
+
+        ui.countdown_confirm('heading', 'message', 300)
+
+        assert threading.active_count() == threads
+        assert kodi.builtins == []
+
+    def test_the_dialog_carries_the_three_labels_and_no_autoclose(self, kodi):
         kodi.yesnocustom_answers = [1]
 
         ui.countdown_confirm('heading', 'message', 30)
@@ -317,7 +370,7 @@ class TestCountdownMapping:
         assert call[2] == _STRINGS[ui.S_COUNTDOWN_LATER]
         assert call[3] == _STRINGS[ui.S_COUNTDOWN_REVERT]
         assert call[4] == _STRINGS[ui.S_COUNTDOWN_KEEP]
-        assert call[5] == 30000
+        assert call[5] == 0
 
 
 class TestBootTrial:
@@ -474,6 +527,83 @@ class TestDeferredEdidApply:
         assert sysfs['writes'] == [('edid', _EDID_HEX)]
         assert persist.deferred() is False
         assert persist.current_state() == persist.STATE_CONFIRMED
+
+
+class TestRestartHole:
+    """Finding 11 again, at the other end of the session: a Kodi restart puts
+    display init through the forced EDID the same way a boot does, and the
+    unit's deferral only runs at boot. The service hands the restart a clean
+    kernel and re-owes the layer to the next start.
+    """
+
+    @pytest.fixture
+    def forced(self, kodi, sysfs):
+        sysfs['hpd_state'] = 0
+        sysfs['rawedid'] = _EDID_WITH_VSVDB
+        return store.add_profile(
+            store.KIND_EDID, 'forced', _EDID_HEX, store.SOURCE_CAPTURED)
+
+    def test_a_persisted_layer_is_reverted_and_re_owed(self, kodi, sysfs, forced, unit):
+        persist.persist_profile(forced)
+
+        service._revert_for_restart()
+
+        assert sysfs['writes'] == [('edid', 'sentinel')]
+        assert persist.deferred() is True
+        assert persist.load_persisted()[store.KIND_EDID]['raw'] == _EDID_HEX
+
+    def test_the_next_start_applies_what_the_shutdown_deferred(self, kodi, sysfs, forced, unit):
+        persist.persist_profile(forced)
+        service._revert_for_restart()
+
+        service._apply_deferred()
+
+        assert sysfs['writes'] == [('edid', 'sentinel'), ('edid', _EDID_HEX)]
+        assert persist.deferred() is False
+
+    def test_a_live_chain_is_left_alone(self, kodi, sysfs, forced, unit):
+        sysfs['hpd_state'] = 1
+        persist.persist_profile(forced)
+
+        service._revert_for_restart()
+
+        assert sysfs['writes'] == []
+        assert persist.deferred() is False
+
+    def test_an_unpersisted_profile_is_reverted_without_being_re_owed(self, kodi, sysfs, forced):
+        service._revert_for_restart()
+
+        assert sysfs['writes'] == [('edid', 'sentinel')]
+        assert persist.deferred() is False
+
+    def test_an_edid_nothing_here_armed_is_left_alone(self, kodi, sysfs):
+        # finding 8: a forced EDID that matches no profile of ours is
+        # indistinguishable from the sink's own block, so reverting it would
+        # be speculation, and with the chain off nothing re-reads it back
+        sysfs['hpd_state'] = 0
+        sysfs['rawedid'] = _base_block()
+
+        service._revert_for_restart()
+
+        assert sysfs['writes'] == []
+        assert persist.deferred() is False
+
+    def test_an_empty_rawedid_is_nothing_to_revert(self, kodi, sysfs, forced, unit):
+        sysfs['rawedid'] = b''
+        persist.persist_profile(forced)
+
+        service._revert_for_restart()
+
+        assert sysfs['writes'] == []
+        assert persist.deferred() is False
+
+    def test_the_service_reverts_when_kodi_aborts(self, kodi, sysfs, forced, unit):
+        persist.persist_profile(forced)
+
+        service.run()
+
+        assert sysfs['writes'] == [('edid', 'sentinel')]
+        assert persist.deferred() is True
 
 
 class TestEffectiveLayers:
