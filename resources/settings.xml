@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings version="1">
+  <section id="script.edid.manager">
+    <category id="general" label="General">
+      <group id="1">
+        <setting id="safe_mode_timeout" type="integer" label="Safe-mode countdown, seconds">
+          <level>0</level>
+          <default>30</default>
+          <constraints>
+            <minimum>5</minimum>
+            <step>5</step>
+            <maximum>120</maximum>
+          </constraints>
+          <control type="slider" format="integer"/>
+        </setting>
+        <setting id="default_apply_mode" type="string" label="Default apply mode">
+          <level>0</level>
+          <default>runtime</default>
+          <constraints>
+            <options>
+              <option label="Runtime only">runtime</option>
+              <option label="Persist across reboots">persist</option>
+            </options>
+          </constraints>
+          <control type="spinner" format="string"/>
+        </setting>
+        <setting id="warn_on_avr_capture" type="boolean" label="Warn when capturing through an AVR">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle"/>
+        </setting>
+        <setting id="debug_logging" type="boolean" label="Enable debug logging">
+          <level>0</level>
+          <default>false</default>
+          <control type="toggle"/>
+        </setting>
+      </group>
+    </category>
+  </section>
+</settings>

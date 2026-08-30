@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="script.edid.manager" name="EDID Manager" version="0.1.0" provider-name="matthane">
+  <requires>
+    <import addon="xbmc.python" version="3.0.0"/>
+    <import addon="script.module.sidedata" version="1.7.0"/>
+  </requires>
+  <extension point="xbmc.service" library="service.py"/>
+  <extension point="xbmc.python.script" library="default.py"/>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_GB">Manage the box's EDID and Dolby Vision VSVDB overrides.</summary>
+    <description lang="en_GB">Stores and applies EDID and VSVDB profiles for CoreELEC 22 on Amlogic hardware: capture the connected sink's blocks, edit VSVDB fields, or force a whole EDID, with safe-mode confirmation and boot persistence. Requires script.module.sidedata for decoding.</description>
+    <platform>all</platform>
+    <license>GPL-2.0-or-later</license>
+  </extension>
+</addon>
