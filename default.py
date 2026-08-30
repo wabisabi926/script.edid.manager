@@ -18,6 +18,15 @@ import state  # noqa: E402
 import store  # noqa: E402
 import ui  # noqa: E402
 
+import xbmc  # noqa: E402
+
+_LOG_PREFIX = 'script.edid.manager: '
+
+
+def _log(message, level=xbmc.LOGINFO):
+    xbmc.log(_LOG_PREFIX + message, level)
+
+
 _STATE_STRINGS = {
     state.FOREIGN: ui.S_STATE_FOREIGN,
     state.DRIFTED: ui.S_STATE_DRIFTED,
@@ -210,6 +219,7 @@ def _capture_vsvdb(live):
     name = _ask_name(ui.L(ui.S_CAPTURED_FROM_SINK))
     if name:
         store.add_profile(store.KIND_VSVDB, name, raw, store.SOURCE_CAPTURED)
+        _log('capture stored: %r (%s, %d bytes)' % (name, store.KIND_VSVDB, len(raw) // 2))
 
 
 def _capture_edid(live):
@@ -241,6 +251,7 @@ def _capture_edid(live):
     name = _ask_name(ui.L(ui.S_CAPTURED_FROM_SINK))
     if name:
         store.add_profile(store.KIND_EDID, name, data.hex(), store.SOURCE_CAPTURED)
+        _log('capture stored: %r (%s, %d bytes)' % (name, store.KIND_EDID, len(data)))
 
 
 def _preset_label(index):
@@ -269,6 +280,8 @@ def _add(kind, raw, name_default, source, **kwargs):
     if not name:
         return
     store.add_profile(kind, name, raw, source, **kwargs)
+    if source in (store.SOURCE_IMPORTED, store.SOURCE_PASTED):
+        _log('import stored: intent %s, origin %s' % (kind, kwargs.get('origin_file') or 'pasted'))
 
 
 def _ingest(data, origin_file=None):
@@ -452,10 +465,12 @@ def _delete(profile):
 
 def _countdown():
     seconds = ui.setting_int('safe_mode_timeout', 30)
-    return ui.countdown_confirm(
+    outcome = ui.countdown_confirm(
         ui.L(ui.S_COUNTDOWN_HEADING),
         ui.L(ui.S_COUNTDOWN_MESSAGE) % seconds,
         seconds)
+    _log('countdown outcome: %s' % outcome)
+    return outcome
 
 
 def _advise(kind):
@@ -477,6 +492,7 @@ def _apply_layer(live, profile):
         except Exception as error:
             ui.ok(ui.L(ui.S_INVALID_EDID) % error)
             return None
+        _log('applied at runtime: %r (%s)' % (profile.get('name'), profile['kind']))
         return runtime.revert_edid
 
     try:
@@ -488,6 +504,7 @@ def _apply_layer(live, profile):
         ui.ok(ui.L(ui.S_INVALID_VSVDB) % error)
         return None
 
+    _log('applied at runtime: %r (%s)' % (profile.get('name'), profile['kind']))
     return lambda: runtime.revert_vsvdb(forced_edid)
 
 
@@ -500,7 +517,8 @@ def _apply_runtime(live, profile):
     if revert is None:
         return
 
-    if _countdown() == 'yes':
+    outcome = _countdown()
+    if outcome == 'yes':
         ui.notify(ui.L(ui.S_APPLIED))
         _advise(profile['kind'])
         return
@@ -510,6 +528,8 @@ def _apply_runtime(live, profile):
     except Exception as error:
         ui.ok(ui.L(ui.S_SYSFS_UNAVAILABLE) % error)
         return
+    _log('profile reverted: %r (%s) trigger=countdown-%s' % (
+        profile.get('name'), profile['kind'], outcome))
     ui.notify(ui.L(ui.S_REVERTED))
 
 
@@ -525,6 +545,7 @@ def _persist(live, profile):
         return
 
     persist.persist_profile(profile)
+    _log('profile persisted: %r (%s)' % (profile.get('name'), profile['kind']))
 
     # persisting also applies now, which is what makes persisted-pending a
     # state that can actually occur rather than a hole in the model (design
@@ -546,7 +567,8 @@ def _persist(live, profile):
         ui.notify(ui.L(ui.S_PERSISTED))
         return
 
-    if _countdown() == 'yes':
+    outcome = _countdown()
+    if outcome == 'yes':
         ui.notify(ui.L(ui.S_PERSISTED))
         _advise(profile['kind'])
         return
@@ -557,6 +579,8 @@ def _persist(live, profile):
         revert()
     except Exception as error:
         ui.ok(ui.L(ui.S_SYSFS_UNAVAILABLE) % error)
+    _log('profile reverted: %r (%s) trigger=countdown-%s' % (
+        profile.get('name'), profile['kind'], outcome))
     _unpersist(profile, quiet=True)
     ui.notify(ui.L(ui.S_PERSIST_REVERTED))
 
@@ -565,6 +589,7 @@ def _unpersist(profile, quiet=False):
     remaining = persist.unpersist(profile['kind'])
     if not remaining:
         persist.disable_unit()
+    _log('profile unpersisted: %r (%s)' % (profile.get('name'), profile['kind']))
     if not quiet:
         ui.notify(ui.L(ui.S_UNPERSISTED))
 
@@ -579,6 +604,8 @@ def _revert_profile(live, profile):
     except Exception as error:
         ui.ok(ui.L(ui.S_SYSFS_UNAVAILABLE) % error)
         return
+    _log('profile reverted: %r (%s) trigger=menu revert-profile' % (
+        profile.get('name'), profile['kind']))
 
     persisted = live['persisted'].get(profile['kind'])
     if persisted and persisted.get('id') == profile.get('id'):
@@ -597,6 +624,7 @@ def _revert_real_edid():
     if errors:
         ui.ok(ui.L(ui.S_SYSFS_UNAVAILABLE) % '; '.join(errors))
         return
+    _log('profile reverted: trigger=unconditional revert-real-EDID')
     ui.notify(ui.L(ui.S_REVERTED_REAL_EDID))
 
 
