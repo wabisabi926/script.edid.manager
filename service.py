@@ -43,9 +43,22 @@ def _debug(message):
         _log(message, xbmc.LOGDEBUG)
 
 
+def _disarmed_layers(persisted):
+    """Layers a boot disarm left the marker for. active.profile is retained
+    across a disarm, so feeding it into classify would score params-at-
+    defaults against a stale persisted raw and land on drifted, technically
+    correct per the classifier but misleading right next to the disarmed
+    notice the user just saw.
+    """
+    if not persist.disarmed():
+        return set()
+    return set(persisted)
+
+
 def _classify():
     profiles = store.list_profiles()
     persisted = persist.load_persisted()
+    disarmed_layers = _disarmed_layers(persisted)
 
     force_vsvdb = 0
     vsvdb_data = b''
@@ -62,18 +75,22 @@ def _classify():
     vsvdb = state.classify_vsvdb(
         force_vsvdb, vsvdb_data, dv_cap,
         [p for p in profiles if p.get('kind') == store.KIND_VSVDB],
-        persisted.get(store.KIND_VSVDB))
+        None if store.KIND_VSVDB in disarmed_layers else persisted.get(store.KIND_VSVDB))
     edid_state = state.classify_edid(
         rawedid,
         [p for p in profiles if p.get('kind') == store.KIND_EDID],
-        persisted.get(store.KIND_EDID))
-    return vsvdb, edid_state
+        None if store.KIND_EDID in disarmed_layers else persisted.get(store.KIND_EDID))
+    return vsvdb, edid_state, disarmed_layers
 
 
 def _reconcile():
-    vsvdb, edid_state = _classify()
-    _log('startup state: vsvdb %s, edid %s%s' % (
-        vsvdb.state, edid_state.state, ' (uncertain)' if edid_state.uncertain else ''))
+    vsvdb, edid_state, disarmed_layers = _classify()
+    vsvdb_text = ('vsvdb disarmed at boot (profile retained)'
+                  if store.KIND_VSVDB in disarmed_layers else 'vsvdb %s' % vsvdb.state)
+    edid_text = ('edid disarmed at boot (profile retained)' if store.KIND_EDID in disarmed_layers
+                 else 'edid %s%s' % (
+                     edid_state.state, ' (uncertain)' if edid_state.uncertain else ''))
+    _log('startup state: %s, %s' % (vsvdb_text, edid_text))
 
 
 def _warn_modprobe_leftovers():

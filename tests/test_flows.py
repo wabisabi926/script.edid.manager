@@ -600,6 +600,24 @@ def test_the_script_extension_comes_first_so_the_addon_lands_under_programs():
     assert points[:2] == ['xbmc.python.script', 'xbmc.service']
 
 
+def test_reconcile_reports_disarmed_not_drifted_after_a_boot_disarm(kodi, sysfs, monkeypatch):
+    # device drill: active.disarmed present, active.profile retained, params
+    # back at defaults. The stale persisted raw disagreeing with defaulted
+    # params is technically drifted per the classifier, but misleading right
+    # next to the disarmed notice the user just saw.
+    logged = []
+    monkeypatch.setattr(sys.modules['xbmc'], 'log', lambda message, level=1: logged.append(message))
+    profile = store.add_profile(
+        store.KIND_VSVDB, 'armed', _VSVDB_HEX, store.SOURCE_CAPTURED)
+    persist.persist_profile(profile)
+    persist.disarm()
+
+    service._reconcile()
+
+    assert any('vsvdb disarmed at boot (profile retained)' in message for message in logged)
+    assert not any('drifted' in message for message in logged)
+
+
 def test_a_failed_rearm_says_so(kodi):
     persist.disarm()
     kodi.yesno_answers = [True]
