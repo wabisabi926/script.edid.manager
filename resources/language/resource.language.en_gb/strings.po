@@ -385,7 +385,7 @@ msgid "Boot persistence could not be enabled: %s"
 msgstr ""
 
 msgctxt "#32121"
-msgid "HDR10+ advertisement (not Dolby Vision)"
+msgid "Amlogic HDR10+ (not Dolby Vision)"
 msgstr ""
 
 msgctxt "#32122"
@@ -465,13 +465,25 @@ msgid "Settings"
 msgstr ""
 
 msgctxt "#32153"
-msgid "Source-led DV, 1400 nit peak"
+msgid "Amlogic source-led DV, 1400 nit"
 msgstr ""
 
 msgctxt "#32154"
-msgid "Sink-led DV, P3-D65, 450 nit peak"
+msgid "Amlogic sink-led DV, P3-D65 450 nit"
 msgstr ""
 
 msgctxt "#32155"
-msgid "Sink+source-led DV, 320 nit peak"
+msgid "Amlogic sink+source DV, 320 nit"
+msgstr ""
+
+msgctxt "#32156"
+msgid "%s EDID"
+msgstr ""
+
+msgctxt "#32157"
+msgid "%s VSVDB"
+msgstr ""
+
+msgctxt "#32158"
+msgid "Captured VSVDB"
 msgstr ""

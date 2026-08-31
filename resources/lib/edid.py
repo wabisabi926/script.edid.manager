@@ -133,6 +133,39 @@ def parse_pnp_id(data):
     return manufacturer, product
 
 
+_DESCRIPTOR_OFFSETS = (54, 72, 90, 108)
+_DESCRIPTOR_SIZE = 18
+_DISPLAY_DESCRIPTOR_TAG = 0xfc
+_DESCRIPTOR_TEXT_TERMINATOR = 0x0a
+
+
+def parse_monitor_name(data):
+    """Decode the display product name descriptor (tag 0xfc) out of block
+    0's four 18-byte descriptor slots at offsets 54-125. Returns the ASCII
+    name, or None if no such descriptor is present or its text is not clean
+    ASCII. Never raises.
+    """
+    if len(data) < 126:
+        return None
+
+    for offset in _DESCRIPTOR_OFFSETS:
+        descriptor = data[offset:offset + _DESCRIPTOR_SIZE]
+        if descriptor[0:3] != b'\x00\x00\x00' or descriptor[3] != _DISPLAY_DESCRIPTOR_TAG:
+            continue
+
+        text = descriptor[5:18]
+        terminator = text.find(_DESCRIPTOR_TEXT_TERMINATOR)
+        if terminator >= 0:
+            text = text[:terminator]
+        try:
+            name = text.decode('ascii').strip()
+        except UnicodeDecodeError:
+            return None
+        return name or None
+
+    return None
+
+
 def find_vsvdb(data):
     """Walk the CTA-861 extension blocks for a vendor-specific data block
     carrying the Dolby OUI and return its raw bytes, the same shape

@@ -77,7 +77,7 @@ def test_binding_import_labels_are_verbatim():
 
 
 def test_preset_4_is_labeled_for_what_it_is():
-    assert _STRINGS[ui.S_PRESET_4_LABEL] == 'HDR10+ advertisement (not Dolby Vision)'
+    assert _STRINGS[ui.S_PRESET_4_LABEL] == 'Amlogic HDR10+ (not Dolby Vision)'
 
 
 @pytest.mark.parametrize('value,expected', [

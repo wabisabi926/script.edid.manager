@@ -190,6 +190,18 @@ def _base_block(ext_count=0):
     return _checksum(b)
 
 
+def _named_base_block(name, ext_count=0):
+    # a display product name descriptor (tag 0xfc) in slot 0, offsets 54-71
+    b = bytearray(128)
+    b[0:8] = bytes.fromhex('00ffffffffffff00')
+    b[0x7e] = ext_count
+    b[54:57] = b'\x00\x00\x00'
+    b[57] = 0xfc
+    b[58] = 0x00
+    b[59:72] = (name.encode('ascii') + b'\n').ljust(13, b' ')[:13]
+    return _checksum(b)
+
+
 def _cta_extension(data_blocks=b''):
     b = bytearray(128)
     b[0] = 0x02
@@ -1011,6 +1023,76 @@ class TestBootTimingClamp:
         monkeypatch.setitem(_SETTINGS, 'safe_mode_timeout', raw)
 
         assert default._safe_mode_timeout() == expected
+
+
+class TestCaptureDefaultNames:
+    """A default a remote user can accept as-is beats a generic one they
+    have to retype. Leaving the input queue empty makes the stub's `input()`
+    return exactly the default it was offered (matching a real dialog
+    unedited), so the stored profile name proves what got offered.
+    """
+
+    def test_edid_capture_prefers_the_monitor_name_descriptor(self, kodi, sysfs):
+        sysfs['rawedid'] = _named_base_block('TX-RZ50')
+
+        default._capture_edid(default._read_live())
+
+        assert store.list_profiles()[0]['name'] == _STRINGS[ui.S_CAPTURED_EDID_NAME] % 'TX-RZ50'
+
+    def test_edid_capture_falls_back_to_the_pnp_id(self, kodi, sysfs):
+        b = bytearray(_base_block())
+        b[8] = 0x04  # ACM
+        b[9] = 0x6d
+        sysfs['rawedid'] = _checksum(bytes(b))
+
+        default._capture_edid(default._read_live())
+
+        assert store.list_profiles()[0]['name'] == _STRINGS[ui.S_CAPTURED_EDID_NAME] % 'ACM'
+
+    def test_edid_default_name_falls_back_further_with_neither_available(self):
+        # unreachable through a captured, validated EDID (always >= 128
+        # bytes, so parse_pnp_id always has something to decode); exercised
+        # directly the way the fallback branch itself can actually be hit
+        assert default._default_edid_name(b'') == _STRINGS[ui.S_CAPTURED_FROM_SINK]
+
+    def test_vsvdb_capture_names_from_the_current_rawedid(self, kodi, sysfs):
+        sysfs['rawedid'] = _named_base_block('TX-RZ50')
+        sysfs['dv_cap'] = _VSVDB_HEX
+
+        default._capture_vsvdb(default._read_live())
+
+        assert store.list_profiles()[0]['name'] == _STRINGS[ui.S_CAPTURED_VSVDB_NAME] % 'TX-RZ50'
+
+    def test_vsvdb_capture_falls_back_to_a_generic_name(self, kodi, sysfs):
+        sysfs['rawedid'] = b''
+        sysfs['dv_cap'] = _VSVDB_HEX
+
+        default._capture_vsvdb(default._read_live())
+
+        assert store.list_profiles()[0]['name'] == _STRINGS[ui.S_CAPTURED_VSVDB_FALLBACK]
+
+    def test_a_colliding_default_gets_a_numeric_suffix(self, kodi, sysfs):
+        sysfs['rawedid'] = _named_base_block('TX-RZ50')
+        existing_name = _STRINGS[ui.S_CAPTURED_EDID_NAME] % 'TX-RZ50'
+        # a different raw so this only collides on name, not on the
+        # override-suspected raw match _capture_edid checks first
+        store.add_profile(store.KIND_EDID, existing_name, _named_base_block('OTHER').hex(),
+                          store.SOURCE_CAPTURED)
+
+        default._capture_edid(default._read_live())
+
+        assert store.list_profiles()[-1]['name'] == existing_name + ' 2'
+
+    def test_the_suffix_never_touches_a_name_the_user_actually_typed(self, kodi, sysfs):
+        sysfs['rawedid'] = _named_base_block('TX-RZ50')
+        existing_name = _STRINGS[ui.S_CAPTURED_EDID_NAME] % 'TX-RZ50'
+        store.add_profile(store.KIND_EDID, existing_name, _named_base_block('OTHER').hex(),
+                          store.SOURCE_CAPTURED)
+        kodi.input_answers = [existing_name]
+
+        default._capture_edid(default._read_live())
+
+        assert [p['name'] for p in store.list_profiles()] == [existing_name, existing_name]
 
 
 def test_an_unimportable_sidedata_is_logged_not_swallowed(kodi, monkeypatch):

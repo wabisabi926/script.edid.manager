@@ -117,6 +117,47 @@ class TestParsePnpId:
         assert edid.parse_pnp_id(b'') == (None, None)
 
 
+def _with_descriptor(slot, tag, text):
+    b = bytearray(_base_block())
+    offset = 54 + slot * 18
+    b[offset:offset + 3] = b'\x00\x00\x00'
+    b[offset + 3] = tag
+    b[offset + 4] = 0x00
+    b[offset + 5:offset + 18] = text.ljust(13, b'\x00')[:13]
+    return bytes(b)
+
+
+class TestParseMonitorName:
+    def test_decodes_a_terminated_padded_name(self):
+        data = _with_descriptor(0, 0xfc, b'TX-RZ50\n     ')
+
+        assert edid.parse_monitor_name(data) == 'TX-RZ50'
+
+    def test_padding_after_the_terminator_is_not_part_of_the_name(self):
+        data = _with_descriptor(1, 0xfc, b'ONK\n         ')
+
+        assert edid.parse_monitor_name(data) == 'ONK'
+
+    def test_no_name_descriptor_in_any_slot_is_none(self):
+        assert edid.parse_monitor_name(_base_block()) is None
+
+    def test_non_ascii_text_is_none_not_an_exception(self):
+        data = _with_descriptor(0, 0xfc, bytes([0xff]) + b'\n' + b' ' * 11)
+
+        assert edid.parse_monitor_name(data) is None
+
+    def test_too_short_to_hold_descriptors_is_none(self):
+        assert edid.parse_monitor_name(bytes(125)) is None
+
+    def test_never_raises_on_empty(self):
+        assert edid.parse_monitor_name(b'') is None
+
+    def test_a_name_descriptor_is_found_outside_the_first_slot(self):
+        data = _with_descriptor(2, 0xfc, b'ONKYO\n       ')
+
+        assert edid.parse_monitor_name(data) == 'ONKYO'
+
+
 class TestValidateEdidAccepts:
     def test_single_block_no_extensions(self):
         data = _base_block(ext_count=0)

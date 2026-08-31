@@ -201,6 +201,43 @@ def _ask_name(default=''):
     return ui.ask_text(ui.L(ui.S_ASK_NAME), default)
 
 
+def _monitor_descriptor(data):
+    """The nicest short name an EDID gives up: the display product name
+    descriptor if the sink bothered to set one, else the 3-letter PnP ID.
+    None if neither is readable.
+    """
+    if not data:
+        return None
+    return edid.parse_monitor_name(data) or edid.parse_pnp_id(data)[0]
+
+
+def _unique_default_name(candidate):
+    """A default text the user can accept as-is without colliding with a
+    profile already in the store; never applied to what the user types.
+    """
+    existing = {profile.get('name') for profile in store.list_profiles()}
+    if candidate not in existing:
+        return candidate
+    suffix = 2
+    while '%s %d' % (candidate, suffix) in existing:
+        suffix += 1
+    return '%s %d' % (candidate, suffix)
+
+
+def _default_edid_name(data):
+    descriptor = _monitor_descriptor(data)
+    if descriptor:
+        return _unique_default_name(ui.L(ui.S_CAPTURED_EDID_NAME) % descriptor)
+    return _unique_default_name(ui.L(ui.S_CAPTURED_FROM_SINK))
+
+
+def _default_vsvdb_name(live):
+    descriptor = _monitor_descriptor(live['rawedid'])
+    if descriptor:
+        return _unique_default_name(ui.L(ui.S_CAPTURED_VSVDB_NAME) % descriptor)
+    return _unique_default_name(ui.L(ui.S_CAPTURED_VSVDB_FALLBACK))
+
+
 def _capture_vsvdb(live):
     if live['force_vsvdb'] != 0:
         choice = ui.select(
@@ -230,7 +267,7 @@ def _capture_vsvdb(live):
     if ui.setting_bool('warn_on_avr_capture', True):
         ui.ok(ui.L(ui.S_AVR_WARNING))
 
-    name = _ask_name(ui.L(ui.S_CAPTURED_FROM_SINK))
+    name = _ask_name(_default_vsvdb_name(live))
     if name:
         store.add_profile(store.KIND_VSVDB, name, raw, store.SOURCE_CAPTURED)
         _log('capture stored: %r (%s, %d bytes)' % (name, store.KIND_VSVDB, len(raw) // 2))
@@ -262,7 +299,7 @@ def _capture_edid(live):
         ui.ok(ui.L(ui.S_INVALID_EDID) % error)
         return
 
-    name = _ask_name(ui.L(ui.S_CAPTURED_FROM_SINK))
+    name = _ask_name(_default_edid_name(data))
     if name:
         store.add_profile(store.KIND_EDID, name, data.hex(), store.SOURCE_CAPTURED)
         _log('capture stored: %r (%s, %d bytes)' % (name, store.KIND_EDID, len(data)))
