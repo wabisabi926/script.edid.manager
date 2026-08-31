@@ -204,12 +204,48 @@ class TestClassifyEdid:
         assert result.profile_id == 'persisted-id'
         assert result.uncertain is False
 
-    def test_runtime_only(self):
-        result = state.classify_edid(bytes.fromhex(_PROFILE_A['raw']), [_PROFILE_A])
+    def test_matched_with_an_agreeing_runtime_marker_is_certain_runtime_only(self):
+        # the tmpfs marker is addon-authored evidence a rawedid match alone
+        # can never be: forced_edid can't be read back (finding 8), so
+        # nothing else can tell "we forced this" from "it's just the sink's"
+        result = state.classify_edid(
+            bytes.fromhex(_PROFILE_A['raw']), [_PROFILE_A],
+            runtime_marker_raw=_PROFILE_A['raw'])
         assert result.state == state.RUNTIME_ONLY
         assert result.profile_id == _PROFILE_A['id']
-        # a rawedid match cannot prove forcing: the captured sink EDID
-        # matches its own profile with nothing forced at all
+        assert result.uncertain is False
+
+    def test_the_marker_match_is_not_case_sensitive(self):
+        result = state.classify_edid(
+            bytes.fromhex(_PROFILE_A['raw']), [_PROFILE_A],
+            runtime_marker_raw=_PROFILE_A['raw'].upper())
+        assert result.state == state.RUNTIME_ONLY
+        assert result.uncertain is False
+
+    def test_matched_with_no_marker_is_inactive_but_still_uncertain(self):
+        # the bug this fixes: a capture of the real sink matches its own
+        # profile with nothing forced, which used to read as an unclearable
+        # "runtime-only (uncertain)" forever, implying something was active.
+        # The marker's absence only rules out this addon, not a
+        # terminal-forced EDID (the public gist documents forcing one
+        # directly), so it stays uncertain; the fix is the state itself,
+        # inactive rather than the misleading runtime-only.
+        result = state.classify_edid(bytes.fromhex(_PROFILE_A['raw']), [_PROFILE_A])
+        assert result.state == state.INACTIVE
+        assert result.profile_id is None
+        assert result.uncertain is True
+
+    def test_matched_with_a_stale_different_marker_is_inactive_and_uncertain(self):
+        # the marker names a profile that was forced and then reverted (or
+        # never was this one); the last thing this addon actually forced
+        # disagreeing with what is now latched is not evidence for a match
+        # it disagrees with, so this is the same undecidable case as no
+        # marker at all
+        result = state.classify_edid(
+            bytes.fromhex(_PROFILE_A['raw']), [_PROFILE_A],
+            runtime_marker_raw=_PROFILE_B['raw'])
+        assert result.state == state.INACTIVE
+        assert result.profile_id is None
         assert result.uncertain is True
 
     def test_inactive_no_rawedid_no_persisted(self):

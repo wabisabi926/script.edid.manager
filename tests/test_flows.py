@@ -223,6 +223,7 @@ def kodi(tmp_path, monkeypatch):
     persist_dir.mkdir()
     monkeypatch.setenv('EDIDMGR_PERSIST_DIR', str(persist_dir))
     monkeypatch.setenv('EDIDMGR_MODPROBE_D', str(tmp_path / 'absent'))
+    monkeypatch.setenv('EDIDMGR_RUNTIME_MARKER_PATH', str(tmp_path / 'run' / 'active.runtime'))
     ui._ADDON = None
     return DIALOG
 
@@ -271,6 +272,153 @@ def unit(monkeypatch):
 
 def _messages(dialog):
     return [call[1] for call in dialog.calls]
+
+
+class TestRuntimeMarkerClearsCapturedSinkUncertainty:
+    """The bug the tmpfs runtime marker fixes: capturing the sink's own EDID
+    stores a profile that matches rawedid by construction, with nothing
+    forced at all. Before the marker existed this read as an unclearable
+    runtime-only (uncertain) forever, implying something was actively
+    forced. The marker's absence still cannot rule out a terminal-forced
+    EDID (the public gist this addon supersedes documents forcing one
+    directly), so this stays uncertain, but the state itself is now the
+    honest one: inactive, not runtime-only. Nothing in these tests ever
+    writes a marker, which is exactly what a real reboot's tmpfs wipe
+    leaves behind.
+    """
+
+    def test_a_captured_sink_edid_reads_inactive_at_startup(self, kodi, sysfs):
+        sysfs['rawedid'] = _EDID_WITH_VSVDB
+        store.add_profile(store.KIND_EDID, 'my display', _EDID_HEX, store.SOURCE_CAPTURED)
+
+        _, edid_state, _ = service._classify()
+
+        assert edid_state.state == state.INACTIVE
+        assert edid_state.uncertain is True
+
+    def test_the_same_scenario_reads_the_same_way_in_the_manager_menu(self, kodi, sysfs):
+        sysfs['rawedid'] = _EDID_WITH_VSVDB
+        store.add_profile(store.KIND_EDID, 'my display', _EDID_HEX, store.SOURCE_CAPTURED)
+
+        live = default._read_live()
+
+        assert live['edid'].state == state.INACTIVE
+        assert live['edid'].uncertain is True
+
+    def test_an_edid_this_addon_actually_forced_still_reads_runtime_only(self, kodi, sysfs):
+        sysfs['rawedid'] = _EDID_WITH_VSVDB
+        profile = store.add_profile(store.KIND_EDID, 'forced', _EDID_HEX, store.SOURCE_CAPTURED)
+
+        default._apply_layer(default._read_live(), profile)
+        live = default._read_live()
+
+        assert live['edid'].state == state.RUNTIME_ONLY
+        assert live['edid'].uncertain is False
+        assert live['edid'].profile_id == profile['id']
+
+
+class TestReparseClearsAStaleMarker:
+    """D1: reparse()'s revert branch actually un-forces the EDID (the
+    sentinel drops back to a DDC read), which a VSVDB apply takes whenever
+    there is no persisted EDID underneath it. A marker an earlier runtime
+    apply left behind would otherwise keep claiming that EDID is still
+    forced after this exact call un-forced it.
+    """
+
+    def test_a_vsvdb_apply_over_a_runtime_only_edid_capture_clears_its_marker(self, kodi, sysfs):
+        sysfs['rawedid'] = _EDID_WITH_VSVDB
+        edid_profile = store.add_profile(
+            store.KIND_EDID, 'sink snapshot', _EDID_HEX, store.SOURCE_CAPTURED)
+        default._apply_layer(default._read_live(), edid_profile)
+        assert runtime.read_runtime_marker() == _EDID_HEX
+
+        vsvdb_profile = store.add_profile(
+            store.KIND_VSVDB, 'block', _VSVDB_HEX, store.SOURCE_CAPTURED)
+        default._apply_layer(default._read_live(), vsvdb_profile)
+
+        assert sysfs['writes'][-1] == ('edid', 'sentinel')
+        assert runtime.read_runtime_marker() is None
+        live = default._read_live()
+        assert live['edid'].state == state.INACTIVE
+        assert live['edid'].uncertain is True
+
+
+class TestUnpersistTransfersMarkerEvidence:
+    """D2: unpersisting an EDID layer drops the persistence record but
+    leaves the kernel exactly as it was. A boot-unit apply never went
+    through runtime.apply_edid, so it never wrote a marker either; without
+    transferring the evidence here, the layer would immediately mis-read as
+    uncertain the instant "stop persisting" is chosen, even though the
+    kernel is still forcing precisely those bytes.
+    """
+
+    def test_stopping_persistence_on_an_effective_edid_writes_the_marker(self, kodi, sysfs, unit):
+        sysfs['rawedid'] = _EDID_WITH_VSVDB
+        profile = store.add_profile(
+            store.KIND_EDID, 'boot-applied', _EDID_HEX, store.SOURCE_CAPTURED)
+        persist.persist_profile(profile)
+        assert runtime.read_runtime_marker() is None  # the boot unit never wrote one
+        live = default._read_live()
+        assert live['edid'].state == state.PERSISTED_EFFECTIVE
+
+        default._unpersist(profile, live=live)
+
+        assert sysfs['writes'] == []  # nothing here touches the kernel
+        assert runtime.read_runtime_marker() == _EDID_HEX
+        after = default._read_live()
+        assert after['edid'].state == state.RUNTIME_ONLY
+        assert after['edid'].uncertain is False
+        assert after['edid'].profile_id == profile['id']
+
+    def test_the_transfer_never_fires_for_a_not_yet_effective_layer(self, kodi, sysfs, unit):
+        # nothing to transfer: the persisted profile has not landed in
+        # rawedid yet, so there is no "kernel still forces it" fact to keep
+        sysfs['rawedid'] = b''
+        profile = store.add_profile(
+            store.KIND_EDID, 'pending', _EDID_HEX, store.SOURCE_CAPTURED)
+        persist.persist_profile(profile)
+        live = default._read_live()
+        assert live['edid'].state == state.PERSISTED_PENDING
+
+        default._unpersist(profile, live=live)
+
+        assert runtime.read_runtime_marker() is None
+
+    def test_the_transfer_never_fires_from_a_call_site_that_already_reverted(self, kodi, sysfs, unit):
+        # _revert_profile and the declined-countdown path in _persist both
+        # revert the kernel before calling _unpersist and pass no live;
+        # that must never resurrect a marker for bytes no longer forced
+        sysfs['rawedid'] = _EDID_WITH_VSVDB
+        profile = store.add_profile(
+            store.KIND_EDID, 'boot-applied', _EDID_HEX, store.SOURCE_CAPTURED)
+        persist.persist_profile(profile)
+
+        default._unpersist(profile)
+
+        assert runtime.read_runtime_marker() is None
+
+
+class TestMarkerWriteFailureNeverAbortsAnApply:
+    """D3: the marker write happens after the kernel already latched the
+    EDID. A failure there must degrade to the pre-marker uncertain
+    classification, never bypass the safe-mode countdown the apply already
+    earned.
+    """
+
+    def test_a_failed_marker_write_still_reaches_the_countdown(
+            self, kodi, sysfs, monkeypatch, tmp_path):
+        blocked = tmp_path / 'blocked'
+        blocked.mkdir()
+        monkeypatch.setenv('EDIDMGR_RUNTIME_MARKER_PATH', str(blocked))
+        profile = store.add_profile(store.KIND_EDID, 'forced', _EDID_HEX, store.SOURCE_CAPTURED)
+        kodi.yesno_answers = [True]
+        kodi.yesnocustom_answers = [1]
+
+        default._apply_runtime(default._read_live(), profile)
+
+        assert sysfs['writes'] == [('edid', _EDID_HEX)]
+        assert [call[0] for call in kodi.calls][:2] == ['yesno', 'yesnocustom']
+        assert runtime.read_runtime_marker() is None
 
 
 class TestForcedEdidEvidence:
@@ -568,6 +716,14 @@ class TestRestartHole:
         assert sysfs['writes'] == [('edid', 'sentinel')]
         assert persist.deferred() is True
         assert persist.load_persisted()[store.KIND_EDID]['raw'] == _EDID_HEX
+
+    def test_the_restart_revert_clears_the_runtime_marker(self, kodi, sysfs, forced, unit):
+        persist.persist_profile(forced)
+        runtime.write_runtime_marker(_EDID_HEX)
+
+        service._revert_for_restart()
+
+        assert runtime.read_runtime_marker() is None
 
     def test_the_next_start_applies_what_the_shutdown_deferred(self, kodi, sysfs, forced, unit):
         persist.persist_profile(forced)

@@ -115,7 +115,8 @@ def _classify():
     edid_state = state.classify_edid(
         rawedid,
         [p for p in profiles if p.get('kind') == store.KIND_EDID],
-        None if store.KIND_EDID in disarmed_layers else persisted.get(store.KIND_EDID))
+        None if store.KIND_EDID in disarmed_layers else persisted.get(store.KIND_EDID),
+        runtime.read_runtime_marker())
     return vsvdb, edid_state, disarmed_layers
 
 

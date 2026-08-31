@@ -105,7 +105,8 @@ def _read_live():
         'edid': state.classify_edid(
             rawedid,
             [p for p in profiles if p.get('kind') == store.KIND_EDID],
-            persisted.get(store.KIND_EDID)),
+            persisted.get(store.KIND_EDID),
+            runtime.read_runtime_marker()),
     }
 
 
@@ -637,7 +638,19 @@ def _persist(live, profile):
     ui.notify(ui.L(ui.S_PERSIST_REVERTED))
 
 
-def _unpersist(profile, quiet=False):
+def _unpersist(profile, quiet=False, live=None):
+    """live is only given by the plain "stop persisting" menu action, never
+    by a caller that already reverted (D2): a boot-unit-applied EDID never
+    wrote this addon's own runtime marker, so dropping its persistence
+    record without transferring the evidence would drop the kernel still
+    forcing it straight into a mismatched-marker inactive read. The transfer
+    is only correct while the layer is still the thing actually forced.
+    """
+    if live is not None and profile['kind'] == store.KIND_EDID and \
+            live['edid'].state == state.PERSISTED_EFFECTIVE and \
+            live['edid'].profile_id == profile['id']:
+        runtime.write_runtime_marker(profile['raw'])
+
     remaining = persist.unpersist(profile['kind'])
     if not remaining:
         persist.disable_unit()
@@ -718,7 +731,7 @@ def _profile_menu(profile_id):
         entries = [
             (ui.L(ui.S_ACTION_APPLY), lambda: _apply_runtime(live, profile)),
             (ui.L(ui.S_ACTION_UNPERSIST if is_persisted else ui.S_ACTION_PERSIST),
-             (lambda: _unpersist(profile)) if is_persisted else (lambda: _persist(live, profile))),
+             (lambda: _unpersist(profile, live=live)) if is_persisted else (lambda: _persist(live, profile))),
             (ui.L(ui.S_ACTION_REVERT), lambda: _revert_profile(live, profile)),
         ]
         if profile['kind'] == store.KIND_VSVDB and isinstance(profile.get('decoded'), dict):

@@ -101,13 +101,23 @@ def classify_vsvdb(force_vsvdb, vsvdb_data, dv_cap_hex, profiles, persisted=None
     return Classification(INACTIVE, None, False)
 
 
-def classify_edid(rawedid, profiles, persisted=None):
+def classify_edid(rawedid, profiles, persisted=None, runtime_marker_raw=None):
     """Classify the EDID layer.
 
     rawedid: bytes read from the rawedid sysfs node.
     profiles: the stored kind=edid profiles.
     persisted: the stored profile the persistence marker names for this
         layer, or None if nothing is persisted.
+    runtime_marker_raw: the addon's own tmpfs runtime marker
+        (runtime.read_runtime_marker()), the raw hex it last forced this
+        boot, or None. A match against rawedid proves nothing about forcing
+        on its own (finding 8: forced_edid cannot be read back, so a
+        captured-from-this-sink profile matches rawedid whether or not
+        anything is forced); this is the addon-authored evidence that can.
+        Only agreement is decisive: the marker disagreeing or absent rules
+        out this addon, not a terminal-forced EDID (the public gist this
+        addon supersedes documents forcing one directly), so that case
+        stays uncertain the same as an unmatched rawedid.
 
     Never returns foreign: forced_edid cannot be read back (finding 8), so
     an unrecognized rawedid reports inactive with the uncertainty flag
@@ -119,6 +129,7 @@ def classify_edid(rawedid, profiles, persisted=None):
     """
     rawedid_hex = rawedid.hex() if rawedid else None
     persisted_raw = persisted.get('raw') if persisted else None
+    runtime_marker_raw = runtime_marker_raw.lower() if runtime_marker_raw else None
     matched = _match(profiles, rawedid_hex)
 
     if persisted_raw is not None:
@@ -127,10 +138,8 @@ def classify_edid(rawedid, profiles, persisted=None):
         return Classification(PERSISTED_PENDING, persisted.get('id'), False)
 
     if rawedid_hex is not None:
-        if matched is not None:
-            # uncertain: a match proves nothing about forcing (finding 8);
-            # a captured sink EDID matches its own profile with nothing forced
-            return Classification(RUNTIME_ONLY, matched.get('id'), True)
+        if matched is not None and runtime_marker_raw == rawedid_hex:
+            return Classification(RUNTIME_ONLY, matched.get('id'), False)
         return Classification(INACTIVE, None, True)
 
     return Classification(INACTIVE, None, False)
