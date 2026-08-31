@@ -212,10 +212,6 @@ msgctxt "#32058"
 msgid "Choose a preset"
 msgstr ""
 
-msgctxt "#32059"
-msgid "Preset %d"
-msgstr ""
-
 msgctxt "#32060"
 msgid "Keep this profile?"
 msgstr ""
@@ -466,4 +462,16 @@ msgstr ""
 
 msgctxt "#32152"
 msgid "Settings"
+msgstr ""
+
+msgctxt "#32153"
+msgid "Source-led DV, 1400 nit peak"
+msgstr ""
+
+msgctxt "#32154"
+msgid "Sink-led DV, P3-D65, 450 nit peak"
+msgstr ""
+
+msgctxt "#32155"
+msgid "Sink+source-led DV, 320 nit peak"
 msgstr ""

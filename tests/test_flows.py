@@ -893,16 +893,42 @@ class TestMenuNavigation:
             _STRINGS[ui.S_MENU_ADD_PRESET], _STRINGS[ui.S_MENU_PASTE_HEX],
             _STRINGS[ui.S_MENU_IMPORT_FILE]))
 
-    def test_a_successful_add_returns_to_the_top_level_not_the_add_submenu(self, kodi, sysfs):
+    def test_a_successful_add_redisplays_the_add_menu_not_the_top_level(self, kodi, sysfs):
         # 2 opens Add a profile, 3 picks Paste hex, then the hex text and the
-        # profile name; -1 exits the re-rendered top level afterwards
-        kodi.select_answers = [2, 3, -1]
+        # profile name; the Add menu redisplays rather than unwinding to the
+        # top, -1 backs out of it, -1 exits the re-rendered top level
+        kodi.select_answers = [2, 3, -1, -1]
         kodi.input_answers = [_VSVDB_HEX, 'pasted block']
 
         default._main_menu()
 
         assert [p['kind'] for p in store.list_profiles()] == [store.KIND_VSVDB]
-        assert [call[0] for call in kodi.calls] == ['select', 'select', 'input', 'input', 'select']
+        assert [call[0] for call in kodi.calls] == [
+            'select', 'select', 'input', 'input', 'select', 'select']
+        assert kodi.calls[4] == kodi.calls[1]
+
+    def test_a_cancelled_ask_text_redisplays_the_add_menu_not_the_top_level(self, kodi, sysfs):
+        # 2 opens Add a profile, 3 picks Paste hex; the hex prompt is
+        # cancelled (empty text), so nothing is stored and the Add menu
+        # redisplays instead of unwinding to the top; -1 backs out of it,
+        # -1 exits the re-rendered top level
+        kodi.select_answers = [2, 3, -1, -1]
+        kodi.input_answers = ['']
+
+        default._main_menu()
+
+        assert store.list_profiles() == []
+        assert [call[0] for call in kodi.calls] == ['select', 'select', 'input', 'select', 'select']
+        assert kodi.calls[3] == kodi.calls[1]
+
+    def test_add_preset_lists_the_decoded_fact_labels(self, kodi, sysfs):
+        kodi.select_answers = [-1]
+
+        default._add_preset()
+
+        assert kodi.calls[0] == ('select', (
+            _STRINGS[ui.S_PRESET_1_LABEL], _STRINGS[ui.S_PRESET_2_LABEL],
+            _STRINGS[ui.S_PRESET_3_LABEL], _STRINGS[ui.S_PRESET_4_LABEL]))
 
     def test_settings_row_opens_the_native_settings_dialog(self, kodi, sysfs):
         kodi.select_answers = [4, -1]

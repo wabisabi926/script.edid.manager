@@ -268,10 +268,11 @@ def _capture_edid(live):
         _log('capture stored: %r (%s, %d bytes)' % (name, store.KIND_EDID, len(data)))
 
 
+_PRESET_LABELS = (ui.S_PRESET_1_LABEL, ui.S_PRESET_2_LABEL, ui.S_PRESET_3_LABEL, ui.S_PRESET_4_LABEL)
+
+
 def _preset_label(index):
-    if index == 4:
-        return ui.L(ui.S_PRESET_4_LABEL)
-    return ui.L(ui.S_PRESET_N) % index
+    return ui.L(_PRESET_LABELS[index - 1])
 
 
 def _add_preset():
@@ -737,19 +738,21 @@ def _profiles_menu():
         entries[choice][1]()
 
 
-def _add_menu(live):
-    entries = [
-        (ui.L(ui.S_MENU_CAPTURE_VSVDB), lambda: _capture_vsvdb(live)),
-        (ui.L(ui.S_MENU_CAPTURE_EDID), lambda: _capture_edid(live)),
-        (ui.L(ui.S_MENU_ADD_PRESET), _add_preset),
-        (ui.L(ui.S_MENU_PASTE_HEX), _paste_hex),
-        (ui.L(ui.S_MENU_IMPORT_FILE), _import_file),
-    ]
+def _add_menu():
+    while True:
+        live = _read_live()
+        entries = [
+            (ui.L(ui.S_MENU_CAPTURE_VSVDB), lambda: _capture_vsvdb(live)),
+            (ui.L(ui.S_MENU_CAPTURE_EDID), lambda: _capture_edid(live)),
+            (ui.L(ui.S_MENU_ADD_PRESET), _add_preset),
+            (ui.L(ui.S_MENU_PASTE_HEX), _paste_hex),
+            (ui.L(ui.S_MENU_IMPORT_FILE), _import_file),
+        ]
 
-    choice = ui.select(ui.L(ui.S_MENU_ADD_PROFILE), [label for label, _ in entries])
-    if choice < 0:
-        return
-    entries[choice][1]()
+        choice = ui.select(ui.L(ui.S_MENU_ADD_PROFILE), [label for label, _ in entries])
+        if choice < 0:
+            return
+        entries[choice][1]()
 
 
 def _main_menu():
@@ -758,7 +761,7 @@ def _main_menu():
         entries = [
             (_live_state_line(live), lambda: _show_live_state(live)),
             (ui.L(ui.S_MENU_PROFILES) % len(live['profiles']), _profiles_menu),
-            (ui.L(ui.S_MENU_ADD_PROFILE), lambda: _add_menu(live)),
+            (ui.L(ui.S_MENU_ADD_PROFILE), _add_menu),
             (ui.L(ui.S_MENU_REVERT_REAL), _revert_real_edid),
             (ui.L(ui.S_MENU_SETTINGS), ui.open_settings),
         ]
