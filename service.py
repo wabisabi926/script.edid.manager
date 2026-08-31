@@ -29,11 +29,24 @@ _LOG_PREFIX = 'script.edid.manager: '
 # the GUI has to be up before a dialog is worth showing, and dv_cap is read
 # through the same sysfs the boot unit wrote before Kodi started
 _STARTUP_DELAY = 5.0
+# 0 is not safe: Monitor.waitForAbort treats timeoutMS<=0 as infinite, which
+# blocks run() here until shutdown and skips every boot check silently
+_STARTUP_DELAY_FLOOR = 1.0
+_STARTUP_DELAY_CEILING = 60.0
 
 # a persisted profile is normally already effective at startup, but an EDID
 # applied with the chain off only reaches dv_cap at the hotplug parse
 _TRIAL_POLL = 2.0
 _TRIAL_WAIT = 120.0
+
+# below this, a slow-sync display (a projector) can read as ineffective
+# before it finishes syncing, so the trial dialog never shows and the next
+# boot disarms a profile that was never actually wrong
+_TRIAL_WAIT_FLOOR = 120.0
+_TRIAL_WAIT_CEILING = 600.0
+
+_SAFE_MODE_TIMEOUT_FLOOR = 5.0
+_SAFE_MODE_TIMEOUT_CEILING = 90.0
 
 _ABORT_POLL = 5.0
 
@@ -45,6 +58,25 @@ def _log(message, level=xbmc.LOGINFO):
 def _debug(message):
     if ui.setting_bool('debug_logging'):
         _log(message, xbmc.LOGDEBUG)
+
+
+def _clamp(value, floor, ceiling):
+    return max(floor, min(ceiling, value))
+
+
+def _trial_wait():
+    return _clamp(ui.setting_int('boot_trial_wait', int(_TRIAL_WAIT)),
+                  _TRIAL_WAIT_FLOOR, _TRIAL_WAIT_CEILING)
+
+
+def _startup_delay():
+    return _clamp(ui.setting_int('startup_delay', int(_STARTUP_DELAY)),
+                  _STARTUP_DELAY_FLOOR, _STARTUP_DELAY_CEILING)
+
+
+def _safe_mode_timeout():
+    return _clamp(ui.setting_int('safe_mode_timeout', 30),
+                  _SAFE_MODE_TIMEOUT_FLOOR, _SAFE_MODE_TIMEOUT_CEILING)
 
 
 def _disarmed_layers(persisted):
@@ -178,8 +210,9 @@ def _effective(persisted):
 
 
 def _wait_effective(monitor, persisted):
+    trial_wait = _trial_wait()
     waited = 0.0
-    while waited < _TRIAL_WAIT:
+    while waited < trial_wait:
         try:
             if _effective(persisted):
                 return True
@@ -223,7 +256,7 @@ def _boot_trial(monitor):
     # unanswered" from "dialog never reached" (design section 3)
     persist.dialog_shown()
 
-    seconds = ui.setting_int('safe_mode_timeout', 30)
+    seconds = _safe_mode_timeout()
     answer = ui.countdown_confirm(
         ui.L(ui.S_BOOT_TRIAL_HEADING),
         ui.L(ui.S_BOOT_TRIAL_MESSAGE) % seconds,
@@ -292,7 +325,7 @@ def _revert_for_restart():
 
 def run():
     monitor = xbmc.Monitor()
-    if not monitor.waitForAbort(_STARTUP_DELAY):
+    if not monitor.waitForAbort(_startup_delay()):
         try:
             _apply_deferred()
             _reconcile()

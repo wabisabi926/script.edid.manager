@@ -59,6 +59,20 @@ _PRIMARIES = (
 # the only editable field whose decoded key is not its own name
 _DECODED_KEYS = {'backlight_min_luma': 'backlight_min_luma_nits'}
 
+# matches settings.xml's declared range; a userdata edit can still put any
+# value in the setting, so the same range is enforced again here
+_SAFE_MODE_TIMEOUT_FLOOR = 5
+_SAFE_MODE_TIMEOUT_CEILING = 90
+
+
+def _clamp(value, floor, ceiling):
+    return max(floor, min(ceiling, value))
+
+
+def _safe_mode_timeout():
+    return _clamp(ui.setting_int('safe_mode_timeout', 30),
+                  _SAFE_MODE_TIMEOUT_FLOOR, _SAFE_MODE_TIMEOUT_CEILING)
+
 
 def _read_live():
     profiles = store.list_profiles()
@@ -464,7 +478,7 @@ def _delete(profile):
 
 
 def _countdown():
-    seconds = ui.setting_int('safe_mode_timeout', 30)
+    seconds = _safe_mode_timeout()
     outcome = ui.countdown_confirm(
         ui.L(ui.S_COUNTDOWN_HEADING),
         ui.L(ui.S_COUNTDOWN_MESSAGE) % seconds,
@@ -705,10 +719,10 @@ def _show_live_state(live):
     ui.ok('\n'.join(lines), heading=ui.L(ui.S_MENU_LIVE_STATE))
 
 
-def _main_menu():
+def _profiles_menu():
     while True:
         live = _read_live()
-        entries = [(_live_state_line(live), lambda: _show_live_state(live))]
+        entries = []
 
         if not live['profiles']:
             entries.append((ui.L(ui.S_MENU_NO_PROFILES), lambda: None))
@@ -716,14 +730,38 @@ def _main_menu():
             entries.append((_profile_label(profile, live),
                             (lambda pid: lambda: _profile_menu(pid))(profile['id'])))
 
-        entries.extend([
-            (ui.L(ui.S_MENU_CAPTURE_VSVDB), lambda: _capture_vsvdb(live)),
-            (ui.L(ui.S_MENU_CAPTURE_EDID), lambda: _capture_edid(live)),
-            (ui.L(ui.S_MENU_ADD_PRESET), _add_preset),
-            (ui.L(ui.S_MENU_PASTE_HEX), _paste_hex),
-            (ui.L(ui.S_MENU_IMPORT_FILE), _import_file),
+        choice = ui.select(ui.L(ui.S_MENU_PROFILES) % len(live['profiles']),
+                           [label for label, _ in entries])
+        if choice < 0:
+            return
+        entries[choice][1]()
+
+
+def _add_menu(live):
+    entries = [
+        (ui.L(ui.S_MENU_CAPTURE_VSVDB), lambda: _capture_vsvdb(live)),
+        (ui.L(ui.S_MENU_CAPTURE_EDID), lambda: _capture_edid(live)),
+        (ui.L(ui.S_MENU_ADD_PRESET), _add_preset),
+        (ui.L(ui.S_MENU_PASTE_HEX), _paste_hex),
+        (ui.L(ui.S_MENU_IMPORT_FILE), _import_file),
+    ]
+
+    choice = ui.select(ui.L(ui.S_MENU_ADD_PROFILE), [label for label, _ in entries])
+    if choice < 0:
+        return
+    entries[choice][1]()
+
+
+def _main_menu():
+    while True:
+        live = _read_live()
+        entries = [
+            (_live_state_line(live), lambda: _show_live_state(live)),
+            (ui.L(ui.S_MENU_PROFILES) % len(live['profiles']), _profiles_menu),
+            (ui.L(ui.S_MENU_ADD_PROFILE), lambda: _add_menu(live)),
             (ui.L(ui.S_MENU_REVERT_REAL), _revert_real_edid),
-        ])
+            (ui.L(ui.S_MENU_SETTINGS), ui.open_settings),
+        ]
 
         leftovers = persist.modprobe_leftovers()
         if leftovers:

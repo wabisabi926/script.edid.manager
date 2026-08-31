@@ -34,6 +34,8 @@ _SETTINGS = {
     'default_apply_mode': 'runtime',
     'warn_on_avr_capture': False,
     'debug_logging': False,
+    'boot_trial_wait': 120,
+    'startup_delay': 5,
 }
 
 
@@ -123,6 +125,9 @@ class _Addon(object):
 
     def getAddonInfo(self, key):
         return 'special://profile/addon_data/script.edid.manager'
+
+    def openSettings(self):
+        DIALOG.calls.append(('openSettings',))
 
 
 class _Monitor(object):
@@ -825,6 +830,161 @@ class TestModprobeLeftovers:
 
         assert _messages(kodi)[1] == _STRINGS[ui.S_MODPROBE_NOT_ONLY_OURS] % path
         assert os.path.exists(path)
+
+
+class TestMenuNavigation:
+    """The manager menu is three levels (top, Profiles, Add a profile)
+    instead of one flat list. Back is select returning -1 at every level,
+    and only the Profiles submenu re-lists itself after an action; the Add
+    submenu and the top level both hand control back up.
+    """
+
+    def test_top_level_rows_and_order(self, kodi, sysfs):
+        kodi.select_answers = [-1]
+
+        default._main_menu()
+
+        assert kodi.calls[0][0] == 'select'
+        assert kodi.calls[0][1][1:] == (
+            _STRINGS[ui.S_MENU_PROFILES] % 0,
+            _STRINGS[ui.S_MENU_ADD_PROFILE],
+            _STRINGS[ui.S_MENU_REVERT_REAL],
+            _STRINGS[ui.S_MENU_SETTINGS],
+        )
+
+    def test_profiles_row_counts_stored_profiles(self, kodi, sysfs):
+        store.add_profile(store.KIND_VSVDB, 'one', _VSVDB_HEX, store.SOURCE_CAPTURED)
+        kodi.select_answers = [-1]
+
+        default._main_menu()
+
+        assert kodi.calls[0][1][1] == _STRINGS[ui.S_MENU_PROFILES] % 1
+
+    def test_profiles_submenu_shows_the_empty_placeholder_and_returns_up(self, kodi, sysfs):
+        # 1 opens Profiles, -1 backs out of it, -1 backs out of the top level
+        kodi.select_answers = [1, -1, -1]
+
+        default._main_menu()
+
+        assert kodi.calls[1] == ('select', (_STRINGS[ui.S_MENU_NO_PROFILES],))
+        assert [call[0] for call in kodi.calls] == ['select', 'select', 'select']
+
+    def test_a_profile_action_returns_to_the_re_listed_profiles_submenu(self, kodi, sysfs):
+        profile = store.add_profile(store.KIND_VSVDB, 'one', _VSVDB_HEX, store.SOURCE_CAPTURED)
+        # 1 opens Profiles, 0 opens the profile, -1 backs out of the profile
+        # menu (no action taken), -1 backs out of Profiles, -1 exits the top
+        kodi.select_answers = [1, 0, -1, -1, -1]
+
+        default._main_menu()
+
+        assert sysfs['writes'] == []
+        label = (default._profile_label(profile, default._read_live()),)
+        profiles_calls = [call for call in kodi.calls if call[0] == 'select' and call[1] == label]
+        assert len(profiles_calls) == 2
+
+    def test_add_submenu_lists_the_five_intake_actions_in_order(self, kodi, sysfs):
+        # 2 opens Add a profile, -1 backs out without choosing one, -1 exits
+        kodi.select_answers = [2, -1, -1]
+
+        default._main_menu()
+
+        assert kodi.calls[1] == ('select', (
+            _STRINGS[ui.S_MENU_CAPTURE_VSVDB], _STRINGS[ui.S_MENU_CAPTURE_EDID],
+            _STRINGS[ui.S_MENU_ADD_PRESET], _STRINGS[ui.S_MENU_PASTE_HEX],
+            _STRINGS[ui.S_MENU_IMPORT_FILE]))
+
+    def test_a_successful_add_returns_to_the_top_level_not_the_add_submenu(self, kodi, sysfs):
+        # 2 opens Add a profile, 3 picks Paste hex, then the hex text and the
+        # profile name; -1 exits the re-rendered top level afterwards
+        kodi.select_answers = [2, 3, -1]
+        kodi.input_answers = [_VSVDB_HEX, 'pasted block']
+
+        default._main_menu()
+
+        assert [p['kind'] for p in store.list_profiles()] == [store.KIND_VSVDB]
+        assert [call[0] for call in kodi.calls] == ['select', 'select', 'input', 'input', 'select']
+
+    def test_settings_row_opens_the_native_settings_dialog(self, kodi, sysfs):
+        kodi.select_answers = [4, -1]
+
+        default._main_menu()
+
+        assert ('openSettings',) in kodi.calls
+
+    def test_the_modprobe_leftover_row_is_last_and_dispatches_to_its_handler(
+            self, kodi, sysfs, monkeypatch, tmp_path):
+        directory = tmp_path / 'modprobe.d'
+        directory.mkdir()
+        (directory / 'vsvdb.conf').write_text('options aml_media force_vsvdb=2\n')
+        monkeypatch.setenv('EDIDMGR_MODPROBE_D', str(directory))
+        leftover_path = str(directory / 'vsvdb.conf')
+        # 5 opens the modprobe row, -1 backs out of it without picking a
+        # file, -1 exits the re-rendered top level
+        kodi.select_answers = [5, -1, -1]
+
+        default._main_menu()
+
+        assert kodi.calls[0][1][-1] == _STRINGS[ui.S_MENU_MODPROBE_DELETE]
+        assert kodi.calls[1] == ('select', (leftover_path,))
+
+
+class TestBootTimingClamp:
+    """boot_trial_wait and startup_delay can arrive out of range via a direct
+    userdata edit, so both are clamped again in code rather than trusted to
+    the settings.xml constraints alone.
+    """
+
+    @pytest.mark.parametrize('raw,expected', [
+        (10, service._TRIAL_WAIT_FLOOR),
+        (120, 120),
+        (300, 300),
+        (900, service._TRIAL_WAIT_CEILING),
+    ])
+    def test_boot_trial_wait_is_clamped(self, kodi, monkeypatch, raw, expected):
+        monkeypatch.setitem(_SETTINGS, 'boot_trial_wait', raw)
+
+        assert service._trial_wait() == expected
+
+    @pytest.mark.parametrize('raw,expected', [
+        (-5, service._STARTUP_DELAY_FLOOR),
+        (0, service._STARTUP_DELAY_FLOOR),
+        (5, 5),
+        (30, 30),
+        (120, service._STARTUP_DELAY_CEILING),
+    ])
+    def test_startup_delay_is_clamped(self, kodi, monkeypatch, raw, expected):
+        monkeypatch.setitem(_SETTINGS, 'startup_delay', raw)
+
+        assert service._startup_delay() == expected
+
+    @pytest.mark.parametrize('raw', [-100, -1, 0])
+    def test_startup_delay_never_disables_the_boot_block(self, kodi, monkeypatch, raw):
+        # waitForAbort(0) blocks forever in real Kodi (timeoutMS<=0 reads as
+        # infinite), so a clamp that could still return 0 would silently
+        # skip every boot check
+        monkeypatch.setitem(_SETTINGS, 'startup_delay', raw)
+
+        assert service._startup_delay() > 0
+
+    @pytest.mark.parametrize('raw,expected', [
+        (1, service._SAFE_MODE_TIMEOUT_FLOOR),
+        (30, 30),
+        (500, service._SAFE_MODE_TIMEOUT_CEILING),
+    ])
+    def test_safe_mode_timeout_is_clamped_in_the_service(self, kodi, monkeypatch, raw, expected):
+        monkeypatch.setitem(_SETTINGS, 'safe_mode_timeout', raw)
+
+        assert service._safe_mode_timeout() == expected
+
+    @pytest.mark.parametrize('raw,expected', [
+        (1, default._SAFE_MODE_TIMEOUT_FLOOR),
+        (30, 30),
+        (500, default._SAFE_MODE_TIMEOUT_CEILING),
+    ])
+    def test_safe_mode_timeout_is_clamped_in_the_manager(self, kodi, monkeypatch, raw, expected):
+        monkeypatch.setitem(_SETTINGS, 'safe_mode_timeout', raw)
+
+        assert default._safe_mode_timeout() == expected
 
 
 def test_an_unimportable_sidedata_is_logged_not_swallowed(kodi, monkeypatch):

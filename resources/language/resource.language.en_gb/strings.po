@@ -48,6 +48,30 @@ msgctxt "#32007"
 msgid "Enable debug logging"
 msgstr ""
 
+msgctxt "#32008"
+msgid "Capture"
+msgstr ""
+
+msgctxt "#32009"
+msgid "Advanced"
+msgstr ""
+
+msgctxt "#32010"
+msgid "Boot-trial display-sync wait, seconds"
+msgstr ""
+
+msgctxt "#32011"
+msgid "How long the boot trial waits for a persisted profile to read back as effective before it asks to keep or revert it. For a slow-sync display, such as a projector: raise this. Set it too low and a slow display misses the dialog and gets disarmed on the next boot."
+msgstr ""
+
+msgctxt "#32012"
+msgid "Startup delay before boot checks, seconds"
+msgstr ""
+
+msgctxt "#32013"
+msgid "How long the service waits after Kodi starts before any of its boot work: applying a profile the boot unit deferred, the disarm notice and the boot-trial dialog. Raise this only for a slow-sync display that needs longer before anything on screen means something. Set it too high and the boot safe-mode backstop runs later than it should."
+msgstr ""
+
 msgctxt "#32020"
 msgid "Capture VSVDB from sink"
 msgstr ""
@@ -430,4 +454,16 @@ msgstr ""
 
 msgctxt "#32144"
 msgid "%s could not be deleted: %s"
+msgstr ""
+
+msgctxt "#32150"
+msgid "Profiles (%d)"
+msgstr ""
+
+msgctxt "#32151"
+msgid "Add a profile"
+msgstr ""
+
+msgctxt "#32152"
+msgid "Settings"
 msgstr ""
