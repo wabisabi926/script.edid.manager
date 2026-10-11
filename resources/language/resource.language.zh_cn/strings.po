@@ -1,0 +1,489 @@
+# Kodi Media Center language file
+# Addon Name: EDID Manager
+# Addon id: script.edid.manager
+# Addon Provider: matthane
+msgid ""
+msgstr ""
+"Project-Id-Version: KODI Addons\n"
+"Report-Msgid-Bugs-To: translations@kodi.tv\n"
+"POT-Creation-Date: 2026-08-30 00:00+0000\n"
+"PO-Revision-Date: 2026-10-11 13:00+0000\n"
+"Last-Translator: wabisabi926\n"
+"Language-Team: Chinese (Simplified) (http://www.kodi.tv)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_cn\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgctxt "#32000"
+msgid "EDID Manager"
+msgstr "EDID 管理器"
+
+msgctxt "#32001"
+msgid "General"
+msgstr "常规"
+
+msgctxt "#32002"
+msgid "Safe-mode countdown, seconds"
+msgstr "安全模式倒计时，秒"
+
+msgctxt "#32003"
+msgid "Default apply mode"
+msgstr "默认应用方式"
+
+msgctxt "#32004"
+msgid "Runtime only"
+msgstr "仅运行时"
+
+msgctxt "#32005"
+msgid "Persist across reboots"
+msgstr "重启后保持"
+
+msgctxt "#32006"
+msgid "Warn when capturing through an AVR"
+msgstr "经由 AVR 采集时发出警告"
+
+msgctxt "#32007"
+msgid "Enable debug logging"
+msgstr "启用调试日志"
+
+msgctxt "#32008"
+msgid "Capture"
+msgstr "采集"
+
+msgctxt "#32009"
+msgid "Advanced"
+msgstr "高级"
+
+msgctxt "#32010"
+msgid "Boot-trial display-sync wait, seconds"
+msgstr "启动试用显示同步等待，秒"
+
+msgctxt "#32011"
+msgid "How long the boot trial waits for a persisted profile to read back as effective before it asks to keep or revert it. For a slow-sync display, such as a projector: raise this. Set it too low and a slow display misses the dialog and gets disarmed on the next boot."
+msgstr "启动试用在询问保留或还原之前，等待已持久化的配置文件被读回为生效状态的时间。对于同步较慢的显示设备（例如投影仪），请调高此值。设置过低时，慢速显示设备会错过对话框，并在下次启动时被解除。"
+
+msgctxt "#32012"
+msgid "Startup delay before boot checks, seconds"
+msgstr "启动检查前的启动延迟，秒"
+
+msgctxt "#32013"
+msgid "How long the service waits after Kodi starts before any of its boot work: applying a profile the boot unit deferred, the disarm notice and the boot-trial dialog. Raise this only for a slow-sync display that needs longer before anything on screen means something. Set it too high and the boot safe-mode backstop runs later than it should."
+msgstr "服务在 Kodi 启动后、开始任何启动工作之前等待的时间：应用启动单元延后的配置文件、解除通知以及启动试用对话框。仅当显示设备同步较慢、屏幕出现内容需要更长时间时才调高此值。设置过高时，启动安全模式的兜底检查会运行得过晚。"
+
+msgctxt "#32020"
+msgid "Capture VSVDB from sink"
+msgstr "从显示端采集 VSVDB"
+
+msgctxt "#32021"
+msgid "Capture EDID from display"
+msgstr "从显示设备采集 EDID"
+
+msgctxt "#32022"
+msgid "Add preset"
+msgstr "添加预设"
+
+msgctxt "#32023"
+msgid "Paste hex"
+msgstr "粘贴十六进制"
+
+msgctxt "#32024"
+msgid "Import from file"
+msgstr "从文件导入"
+
+msgctxt "#32025"
+msgid "Revert to display's real EDID"
+msgstr "还原为显示设备的真实 EDID"
+
+msgctxt "#32026"
+msgid "No profiles yet"
+msgstr "暂无配置文件"
+
+msgctxt "#32027"
+msgid "Live state"
+msgstr "实时状态"
+
+msgctxt "#32028"
+msgid "VSVDB"
+msgstr "VSVDB"
+
+msgctxt "#32029"
+msgid "EDID"
+msgstr "EDID"
+
+msgctxt "#32030"
+msgid "no profile active"
+msgstr "未激活任何配置文件"
+
+msgctxt "#32031"
+msgid "no EDID profile active (a forced EDID set outside this addon cannot be detected)"
+msgstr "未激活任何 EDID 配置文件（无法检测到在本插件之外强制设置的 EDID）"
+
+msgctxt "#32032"
+msgid "active until reboot"
+msgstr "有效至重启"
+
+msgctxt "#32033"
+msgid "persisted and effective"
+msgstr "已持久化且已生效"
+
+msgctxt "#32034"
+msgid "persisted, takes effect at the next display parse"
+msgstr "已持久化，将在下次显示解析时生效"
+
+msgctxt "#32035"
+msgid "drifted from what this addon set"
+msgstr "已偏离本插件所设置的内容"
+
+msgctxt "#32036"
+msgid "set outside this addon"
+msgstr "在本插件之外设置"
+
+msgctxt "#32040"
+msgid "Apply now, until reboot"
+msgstr "立即应用，至重启为止"
+
+msgctxt "#32041"
+msgid "Persist across reboots"
+msgstr "重启后保持"
+
+msgctxt "#32042"
+msgid "Stop persisting"
+msgstr "停止持久化"
+
+msgctxt "#32043"
+msgid "Revert this profile"
+msgstr "还原此配置文件"
+
+msgctxt "#32044"
+msgid "Edit fields"
+msgstr "编辑字段"
+
+msgctxt "#32045"
+msgid "Derive a copy"
+msgstr "派生副本"
+
+msgctxt "#32046"
+msgid "Rename"
+msgstr "重命名"
+
+msgctxt "#32047"
+msgid "Delete"
+msgstr "删除"
+
+msgctxt "#32048"
+msgid "Details"
+msgstr "详情"
+
+msgctxt "#32049"
+msgid "Delete the profile \"%s\"?"
+msgstr "删除配置文件“%s”？"
+
+msgctxt "#32050"
+msgid "Profile name"
+msgstr "配置文件名称"
+
+msgctxt "#32051"
+msgid "Name for the derived profile"
+msgstr "派生副本的名称"
+
+msgctxt "#32052"
+msgid "Choose a field"
+msgstr "选择字段"
+
+msgctxt "#32054"
+msgid "New value"
+msgstr "新值"
+
+msgctxt "#32055"
+msgid "Choose the primaries"
+msgstr "选择原色"
+
+msgctxt "#32056"
+msgid "As captured"
+msgstr "与采集时相同"
+
+msgctxt "#32057"
+msgid "Save this edit?"
+msgstr "保存此修改？"
+
+msgctxt "#32058"
+msgid "Choose a preset"
+msgstr "选择预设"
+
+msgctxt "#32060"
+msgid "Keep this profile?"
+msgstr "保留此配置文件？"
+
+msgctxt "#32061"
+msgid "Reverting in %d seconds unless you keep it."
+msgstr "若不保留，将在 %d 秒后还原。"
+
+msgctxt "#32062"
+msgid "Keep"
+msgstr "保留"
+
+msgctxt "#32063"
+msgid "Revert"
+msgstr "还原"
+
+msgctxt "#32064"
+msgid "Reverted."
+msgstr "已还原。"
+
+msgctxt "#32065"
+msgid "Applied until the next reboot."
+msgstr "已应用，至下次重启为止。"
+
+msgctxt "#32066"
+msgid "Apply this EDID profile?"
+msgstr "应用此 EDID 配置文件？"
+
+msgctxt "#32067"
+msgid "Persist this EDID profile?"
+msgstr "持久化此 EDID 配置文件？"
+
+msgctxt "#32068"
+msgid "\"%s\" replaces what the box believes its display is, until you revert it or reboot."
+msgstr "“%s”将替换设备所识别的显示设备，直到你还原它或重启。"
+
+msgctxt "#32069"
+msgid "Recovery over SSH: rm /storage/.config/edid-manager/active.* disables it at the next boot, and echo \"load 0000000000000000\" > /sys/class/amhdmitx/amhdmitx0/edid drops it now."
+msgstr "通过 SSH 恢复：rm /storage/.config/edid-manager/active.* 将在下次启动时禁用它，而 echo \"load 0000000000000000\" > /sys/class/amhdmitx/amhdmitx0/edid 可立即移除它。"
+
+msgctxt "#32070"
+msgid "The display is off, so applying a VSVDB now would clear the display capabilities instead of setting them. Turn the display on, or persist the profile instead."
+msgstr "显示设备已关闭，此时应用 VSVDB 会清除而非设置显示能力。请打开显示设备，或改为持久化该配置文件。"
+
+msgctxt "#32071"
+msgid "Power-cycle the display or AVR for a clean hotplug."
+msgstr "请对显示设备或 AVR 断电重启，以获得一次干净的热插拔。"
+
+msgctxt "#32072"
+msgid "The display is off; the profile takes effect when it comes back."
+msgstr "显示设备已关闭；该配置文件将在其恢复后生效。"
+
+msgctxt "#32073"
+msgid "Persisted. It applies again at every boot until you confirm or revert it."
+msgstr "已持久化。在你确认或还原之前，它会在每次启动时重新应用。"
+
+msgctxt "#32074"
+msgid "No longer persisted."
+msgstr "已不再持久化。"
+
+msgctxt "#32075"
+msgid "Reverted, and no longer persisted."
+msgstr "已还原，且不再持久化。"
+
+msgctxt "#32080"
+msgid "Use as a full EDID profile."
+msgstr "作为完整的 EDID 配置文件使用。"
+
+msgctxt "#32081"
+msgid "Extract just the VSVDB."
+msgstr "仅提取 VSVDB。"
+
+msgctxt "#32082"
+msgid "Full EDID profile from %s; applying this replaces what the box believes its display is."
+msgstr "来自 %s 的完整 EDID 配置文件；应用它会替换设备所识别的显示设备。"
+
+msgctxt "#32083"
+msgid "VSVDB extracted from %s; the rest of the EDID is not used."
+msgstr "从 %s 提取的 VSVDB；EDID 的其余部分不会被使用。"
+
+msgctxt "#32084"
+msgid "What is this EDID for?"
+msgstr "这个 EDID 用于什么？"
+
+msgctxt "#32085"
+msgid "Choose a file"
+msgstr "选择文件"
+
+msgctxt "#32086"
+msgid "Not a VSVDB block and not a valid EDID: %s"
+msgstr "既不是 VSVDB 块，也不是有效的 EDID：%s"
+
+msgctxt "#32087"
+msgid "This EDID carries no Dolby VSVDB."
+msgstr "此 EDID 不包含 Dolby VSVDB。"
+
+msgctxt "#32100"
+msgid "Persisted profile disarmed"
+msgstr "已持久化的配置文件已被解除"
+
+msgctxt "#32101"
+msgid "The persisted profile was applied at the previous boot and never confirmed, so it has been disarmed. Arm it again?"
+msgstr "该已持久化的配置文件在上次启动时已应用但从未确认，因此已被解除。要再次启用吗？"
+
+msgctxt "#32102"
+msgid "Armed again for the next boot."
+msgstr "已为下次启动重新启用。"
+
+msgctxt "#32103"
+msgid "modprobe.d leftover"
+msgstr "modprobe.d 残留文件"
+
+msgctxt "#32104"
+msgid "%s does nothing on CoreELEC 22: aml_media is built into the kernel. EDID Manager can delete it."
+msgstr "%s 在 CoreELEC 22 上不起作用：aml_media 已内置于内核中。EDID 管理器可以删除它。"
+
+msgctxt "#32105"
+msgid "Keep this profile at every boot?"
+msgstr "每次启动都保留此配置文件？"
+
+msgctxt "#32106"
+msgid "Keeping it stops the question. Doing nothing within %d seconds asks again at the next boot."
+msgstr "保留它可不再询问。若在 %d 秒内不做任何操作，将在下次启动时再次询问。"
+
+msgctxt "#32107"
+msgid "Confirmed. It applies at every boot without asking."
+msgstr "已确认。它会在每次启动时应用，不再询问。"
+
+msgctxt "#32110"
+msgid "Nothing to capture: the display reports no VSVDB."
+msgstr "无可采集内容：显示设备未报告 VSVDB。"
+
+msgctxt "#32111"
+msgid "Nothing to capture: rawedid is empty, so no EDID has been read."
+msgstr "无可采集内容：rawedid 为空，因此未读取到 EDID。"
+
+msgctxt "#32112"
+msgid "An override is active, so this captures the override rather than the sink."
+msgstr "有覆盖正在生效，因此这里采集的是覆盖内容而非显示端。"
+
+msgctxt "#32113"
+msgid "Revert first, then capture the sink"
+msgstr "先还原，再采集显示端"
+
+msgctxt "#32114"
+msgid "Store a copy of the active override"
+msgstr "保存当前生效覆盖的副本"
+
+msgctxt "#32115"
+msgid "Not a usable VSVDB: %s"
+msgstr "不是可用的 VSVDB：%s"
+
+msgctxt "#32116"
+msgid "Not a usable EDID: %s"
+msgstr "不是可用的 EDID：%s"
+
+msgctxt "#32117"
+msgid "Paste a VSVDB block or a whole EDID as hex"
+msgstr "以十六进制粘贴 VSVDB 块或完整的 EDID"
+
+msgctxt "#32118"
+msgid "The kernel interface is not available: %s"
+msgstr "内核接口不可用：%s"
+
+msgctxt "#32119"
+msgid "%s was not created by this addon, so it is left alone. Remove it by hand to enable boot persistence."
+msgstr "%s 不是由本插件创建的，因此未做处理。若要启用启动持久化，请手动移除它。"
+
+msgctxt "#32120"
+msgid "Boot persistence could not be enabled: %s"
+msgstr "无法启用启动持久化：%s"
+
+msgctxt "#32121"
+msgid "Amlogic HDR10+ (not Dolby Vision)"
+msgstr "Amlogic HDR10+（非 Dolby Vision）"
+
+msgctxt "#32122"
+msgid "Applying this adds HDR10+ advertisement and leaves the sink's Dolby Vision state untouched."
+msgstr "应用它会添加 HDR10+ 通告，且不会改变显示端的 Dolby Vision 状态。"
+
+msgctxt "#32123"
+msgid "Captured from the connected sink"
+msgstr "从已连接的显示端采集"
+
+msgctxt "#32124"
+msgid "The block comes from whatever terminates the HDMI chain, which may be an AVR rather than the display."
+msgstr "该块来自 HDMI 链路末端设备，可能是 AVR 而非显示设备。"
+
+msgctxt "#32125"
+msgid "Requested %s, applied %s"
+msgstr "请求 %s，实际应用 %s"
+
+msgctxt "#32126"
+msgid "No decoded fields."
+msgstr "无已解码字段。"
+
+msgctxt "#32127"
+msgid "Profile details"
+msgstr "配置文件详情"
+
+msgctxt "#32128"
+msgid "Reverted to the display's real EDID."
+msgstr "已还原为显示设备的真实 EDID。"
+
+msgctxt "#32129"
+msgid "Yes"
+msgstr "是"
+
+msgctxt "#32130"
+msgid "No"
+msgstr "否"
+
+msgctxt "#32131"
+msgid "Decide later"
+msgstr "稍后决定"
+
+msgctxt "#32132"
+msgid "There is no longer a profile to arm."
+msgstr "不再有可启用的配置文件。"
+
+msgctxt "#32140"
+msgid "Delete inert modprobe.d files"
+msgstr "删除无效的 modprobe.d 文件"
+
+msgctxt "#32141"
+msgid "%s contains nothing but these aml_media options, which do nothing on CoreELEC 22:\n\n%s\nDelete the file?"
+msgstr "%s 仅包含以下 aml_media 选项，而这些选项在 CoreELEC 22 上不起作用：\n\n%s\n要删除该文件吗？"
+
+msgctxt "#32142"
+msgid "%s sets more than aml_media options, so this addon leaves it alone. Edit or delete it yourself."
+msgstr "%s 设置的选项不只是 aml_media，因此本插件未做处理。请自行编辑或删除它。"
+
+msgctxt "#32143"
+msgid "Deleted %s."
+msgstr "已删除 %s。"
+
+msgctxt "#32144"
+msgid "%s could not be deleted: %s"
+msgstr "无法删除 %s：%s"
+
+msgctxt "#32150"
+msgid "Profiles (%d)"
+msgstr "配置文件（%d）"
+
+msgctxt "#32151"
+msgid "Add a profile"
+msgstr "添加配置文件"
+
+msgctxt "#32152"
+msgid "Settings"
+msgstr "设置"
+
+msgctxt "#32153"
+msgid "Amlogic source-led DV, 1400 nit"
+msgstr "Amlogic 源端主导 DV，1400 尼特"
+
+msgctxt "#32154"
+msgid "Amlogic sink-led DV, P3-D65 450 nit"
+msgstr "Amlogic 显示端主导 DV，P3-D65 450 尼特"
+
+msgctxt "#32155"
+msgid "Amlogic sink+source DV, 320 nit"
+msgstr "Amlogic 显示端+源端 DV，320 尼特"
+
+msgctxt "#32156"
+msgid "%s EDID"
+msgstr "%s EDID"
+
+msgctxt "#32157"
+msgid "%s VSVDB"
+msgstr "%s VSVDB"
+
+msgctxt "#32158"
+msgid "Captured VSVDB"
+msgstr "已采集的 VSVDB"

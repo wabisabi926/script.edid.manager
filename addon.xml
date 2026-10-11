@@ -8,7 +8,9 @@
   <extension point="xbmc.service" library="service.py"/>
   <extension point="xbmc.addon.metadata">
     <summary lang="en_GB">Manage the box's EDID and Dolby Vision VSVDB overrides.</summary>
+    <summary lang="zh_CN">管理设备的 EDID 与 Dolby Vision VSVDB 覆盖设置。</summary>
     <description lang="en_GB">Stores and applies EDID and VSVDB profiles for CoreELEC 22 on Amlogic hardware: capture the connected sink's blocks, edit VSVDB fields, or force a whole EDID, with safe-mode confirmation and boot persistence. Requires script.module.sidedata for decoding.</description>
+    <description lang="zh_CN">为 Amlogic 硬件上的 CoreELEC 22 存储并应用 EDID 与 VSVDB 配置文件：采集已连接显示端的块、编辑 VSVDB 字段，或强制整个 EDID，并带有安全模式确认与启动持久化。解码需要 script.module.sidedata。</description>
     <platform>all</platform>
     <license>GPL-2.0-or-later</license>
   </extension>
